@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOS Tur — Plantão 24h</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
+.view{display:none;min-height:100vh;}.view.active{display:block;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* LOADING */
+#v-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#07090f;}
+.spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#e11d48;border-radius:50%;animation:spin .8s linear infinite;}
+
+/* TOPBAR */
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;height:56px;padding:0 24px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.logo{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.logo-icon{width:30px;height:30px;background:#e11d48;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;}
+.logo-name{font-size:16px;font-weight:800;}
+.logo-name span{color:#e11d48;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.live-badge{display:flex;align-items:center;gap:5px;background:#fff1f2;border:1px solid rgba(225,29,72,.2);color:#9f1239;padding:4px 11px;border-radius:100px;font-size:12px;font-weight:600;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#e11d48;animation:pulse 1.8s infinite;}
+.btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #e2e8f0;background:#fff;color:#334155;font-family:'Inter',sans-serif;transition:all .15s;}
+.btn:hover{background:#f1f5f9;}
+.btn-red{background:#e11d48;color:#fff;border-color:#e11d48;}
+.btn-red:hover{background:#be123c;}
+.btn-blue{background:#2563eb;color:#fff;border-color:#2563eb;}
+.btn-blue:hover{background:#1d4ed8;}
+.btn-green{background:#16a34a;color:#fff;border-color:#16a34a;}
+.btn-full{width:100%;justify-content:center;padding:11px;font-size:14px;}
+
+/* NAV TABS */
+.nav-tabs{display:flex;gap:2px;margin-left:12px;}
+.nav-tab{padding:6px 12px;border:none;background:transparent;color:#64748b;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;}
+.nav-tab:hover{background:#f1f5f9;}
+.nav-tab.on{background:#fff1f2;color:#9f1239;font-weight:600;}
+
+/* LAYOUT SISTEMA */
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 56px);}
+.sidebar{background:#fff;border-right:1px solid #e2e8f0;padding:12px 8px;display:flex;flex-direction:column;}
+.sb-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;padding:14px 10px 5px;}
+.sb-btn{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:9px;color:#64748b;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:'Inter',sans-serif;}
+.sb-btn:hover{background:#f1f5f9;color:#0f172a;}
+.sb-btn.on-r{background:#fff1f2;color:#9f1239;font-weight:600;}
+.sb-btn.on-b{background:#eff6ff;color:#1e40af;font-weight:600;}
+.sb-count{margin-left:auto;font-size:11px;font-weight:700;padding:2px 7px;border-radius:100px;}
+.cnt-r{background:#e11d48;color:#fff;}.cnt-g{background:#16a34a;color:#fff;}
+.sb-user{padding:12px 10px;border-top:1px solid #e2e8f0;margin-top:auto;}
+.sb-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0;}
+.content{padding:22px;}
+.page{display:none;}.page.on{display:block;}
+
+/* CARDS */
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.card-title{font-size:15px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+
+/* STATS */
+.stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.stat-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:8px;}
+.stat-value{font-size:28px;font-weight:800;margin-bottom:2px;}
+
+/* FIELDS */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+.field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;}
+.field input,.field select,.field textarea{border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-size:14px;font-family:'Inter',sans-serif;outline:none;background:#f8fafc;color:#0f172a;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#e11d48;box-shadow:0 0 0 3px rgba(225,29,72,.08);background:#fff;}
+.field input::placeholder,.field textarea::placeholder{color:#94a3b8;}
+.row{display:flex;gap:10px;}.row .field{flex:1;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:600;}
+.bdg-r{background:#fff1f2;color:#9f1239;}.bdg-g{background:#f0fdf4;color:#166534;}
+.bdg-b{background:#eff6ff;color:#1e40af;}.bdg-a{background:#fffbeb;color:#92400e;}
+.bdg-gray{background:#f1f5f9;color:#64748b;}
+
+/* TICKETS */
+.ticket{border-left:4px solid #e2e8f0;padding:14px;margin-bottom:10px;background:#fff;border-top:1px solid #e2e8f0;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;border-radius:0 10px 10px 0;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.ticket.p1{border-left-color:#e11d48;}.ticket.p2{border-left-color:#d97706;}.ticket.p3{border-left-color:#16a34a;}.ticket.done{opacity:.7;border-left-color:#94a3b8;}
+.t-hd{display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap;}
+.t-num{font-family:monospace;font-size:11px;color:#94a3b8;}
+.t-title{font-weight:700;font-size:14px;margin-bottom:3px;}
+.t-meta{font-size:12px;color:#64748b;margin-bottom:8px;}
+.t-desc{font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px 12px;margin-bottom:10px;line-height:1.6;}
+.t-actions{display:flex;gap:7px;flex-wrap:wrap;}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{text-align:left;font-size:11px;font-weight:700;color:#64748b;padding:0 0 10px;border-bottom:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:.4px;}
+.tbl td{padding:11px 0;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.tbl tr:last-child td{border:none;}
+.tbl td+td,.tbl th+th{padding-left:12px;}
+
+/* AGENT ROW */
+.agent-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9;}
+.agent-row:last-child{border:none;}
+.a-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;}
+
+/* MISC */
+.divider{border:none;border-top:1px solid #e2e8f0;margin:14px 0;}
+.empty{text-align:center;padding:32px;color:#94a3b8;font-size:14px;}
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px;}
+.stat-row:last-child{border:none;}
+
+/* LOGIN */
+#v-login{display:flex;align-items:center;justify-content:center;padding:20px;background:#07090f;min-height:100vh;}
+.login-card{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:36px;width:100%;max-width:400px;}
+.login-logo{display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:24px;}
+.login-title{font-size:20px;font-weight:800;color:#f1f5f9;text-align:center;margin-bottom:4px;}
+.login-sub{font-size:13px;color:#64748b;text-align:center;margin-bottom:24px;line-height:1.6;}
+.login-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#0d1119;border-radius:9px;padding:4px;margin-bottom:22px;}
+.login-tab{padding:9px;border-radius:7px;border:none;background:transparent;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
+.login-tab.on{background:#e11d48;color:#fff;}
+.login-err{background:rgba(225,29,72,.1);border:1px solid rgba(225,29,72,.2);color:#fb7185;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px;display:none;}
+.login-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.login-field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;}
+.login-field input{background:#0a0c14;border:1px solid #1e293b;color:#f1f5f9;padding:12px 14px;border-radius:9px;font-family:'Inter',sans-serif;font-size:14px;outline:none;}
+.login-field input:focus{border-color:#e11d48;box-shadow:0 0 0 3px rgba(225,29,72,.1);}
+.login-field input::placeholder{color:#334155;}
+.login-btn{width:100%;padding:13px;background:#e11d48;color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-top:4px;}
+.login-btn:hover{background:#be123c;}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;}
+.login-div{border:none;border-top:1px solid #1e293b;margin:18px 0;}
+.login-hint{background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.15);border-radius:8px;padding:10px 14px;font-size:12px;color:#93c5fd;text-align:center;line-height:1.7;}
+.login-back{text-align:center;margin-top:16px;font-size:13px;color:#64748b;}
+.login-back a{color:#fb7185;cursor:pointer;font-weight:600;}
+
+/* LANDING */
+#v-landing{background:#07090f;color:#f1f5f9;}
+.lp-nav{background:rgba(7,9,15,.9);backdrop-filter:blur(16px);border-bottom:1px solid #1e293b;height:60px;padding:0 48px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
+.lp-logo-icon{width:32px;height:32px;background:#e11d48;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;}
+.lp-logo-name{font-size:18px;font-weight:800;color:#f1f5f9;}
+.lp-logo-name span{color:#fb7185;}
+.lp-nav-right{margin-left:auto;display:flex;align-items:center;gap:9px;}
+.lp-live{display:flex;align-items:center;gap:5px;background:rgba(225,29,72,.1);border:1px solid rgba(225,29,72,.2);color:#fb7185;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;}
+.lp-dot{width:6px;height:6px;border-radius:50%;background:#e11d48;animation:pulse 1.8s infinite;}
+.lp-clock{font-size:13px;color:#64748b;font-weight:600;}
+.btn-ghost{display:inline-flex;align-items:center;gap:6px;background:transparent;color:#f1f5f9;border:1px solid #334155;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
+.btn-ghost:hover{background:#0d1119;}
+.btn-lp-red{display:inline-flex;align-items:center;gap:6px;background:#e11d48;color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;}
+.btn-lp-red:hover{background:#be123c;}
+.lp-hero{max-width:1100px;margin:0 auto;padding:80px 48px 64px;text-align:center;}
+.lp-eyebrow{display:inline-flex;align-items:center;gap:7px;background:rgba(225,29,72,.1);border:1px solid rgba(225,29,72,.18);color:#fb7185;padding:6px 15px;border-radius:100px;font-size:12px;font-weight:600;margin-bottom:20px;}
+.lp-hero h1{font-size:clamp(36px,5vw,60px);font-weight:800;line-height:1.08;letter-spacing:-1.5px;margin-bottom:16px;}
+.lp-hero h1 em{font-style:normal;color:#fb7185;}
+.lp-hero p{font-size:17px;color:#64748b;line-height:1.8;max-width:520px;margin:0 auto 32px;}
+.lp-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:48px;}
+.lp-stats{display:flex;gap:48px;justify-content:center;flex-wrap:wrap;padding-top:32px;border-top:1px solid #1e293b;}
+.lp-stat-num{font-size:28px;font-weight:800;color:#fb7185;}
+.lp-stat-lbl{font-size:12px;color:#64748b;margin-top:2px;}
+.lp-divider{height:1px;background:linear-gradient(90deg,transparent,#1e293b,transparent);margin:0 48px;}
+.lp-sec{max-width:1100px;margin:0 auto;padding:64px 48px;}
+.lp-sec-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:#fb7185;margin-bottom:8px;}
+.lp-sec-title{font-size:clamp(24px,4vw,38px);font-weight:800;letter-spacing:-.8px;margin-bottom:10px;}
+.lp-sec-sub{font-size:16px;color:#64748b;line-height:1.8;max-width:480px;margin-bottom:40px;}
+.lp-steps{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #1e293b;border-radius:12px;overflow:hidden;margin-bottom:0;}
+.lp-step{background:#111827;padding:26px 20px;border-right:1px solid #1e293b;}
+.lp-step:last-child{border:none;}
+.lp-step-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:#fff;margin-bottom:12px;}
+.lp-step-title{font-weight:700;font-size:14px;margin-bottom:6px;}
+.lp-step-desc{font-size:12px;color:#64748b;line-height:1.7;}
+.lp-services{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.lp-srv{background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;transition:all .2s;}
+.lp-srv:hover{border-color:#334155;transform:translateY(-2px);}
+.lp-srv-icon{font-size:22px;margin-bottom:12px;}
+.lp-srv-title{font-weight:700;font-size:14px;margin-bottom:6px;}
+.lp-srv-desc{font-size:12px;color:#64748b;line-height:1.7;}
+.lp-pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.lp-price{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:28px;position:relative;transition:all .2s;}
+.lp-price:hover{border-color:#334155;}
+.lp-price.featured{border-color:rgba(225,29,72,.4);}
+.lp-price-tag{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:#e11d48;color:#fff;font-size:11px;font-weight:700;padding:3px 14px;border-radius:100px;white-space:nowrap;}
+.lp-price-plan{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;margin-bottom:10px;}
+.lp-price-amount{font-size:38px;font-weight:800;margin-bottom:4px;letter-spacing:-1px;}
+.lp-price-amount sup{font-size:16px;font-weight:600;vertical-align:super;}
+.lp-price-period{font-size:13px;color:#64748b;margin-bottom:20px;}
+.lp-price-div{height:1px;background:#1e293b;margin:0 0 18px;}
+.lp-price-feats{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:24px;}
+.lp-price-feats li{font-size:13px;color:#64748b;display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.lp-price-feats li .ck{color:#16a34a;font-weight:800;flex-shrink:0;}
+.lp-price-feats li.no{opacity:.3;}
+.lp-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;}
+.lp-contact-info h2{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:10px;}
+.lp-contact-info p{font-size:14px;color:#64748b;line-height:1.8;margin-bottom:22px;}
+.lp-contact-items{display:flex;flex-direction:column;gap:10px;}
+.lp-ci{display:flex;align-items:center;gap:10px;font-size:14px;color:#64748b;}
+.lp-ci-icon{width:32px;height:32px;border-radius:8px;background:rgba(22,163,74,.1);border:1px solid rgba(22,163,74,.2);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.lp-form-card{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:28px;}
+.lp-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+.lp-field label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;}
+.lp-field input,.lp-field select{background:#0a0c14;border:1px solid #1e293b;color:#f1f5f9;padding:11px 13px;border-radius:9px;font-family:'Inter',sans-serif;font-size:14px;outline:none;}
+.lp-field input:focus,.lp-field select:focus{border-color:#e11d48;box-shadow:0 0 0 3px rgba(225,29,72,.08);}
+.lp-field input::placeholder{color:#334155;}
+.lp-field select option{background:#0d1119;}
+.lp-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.lp-footer{border-top:1px solid #1e293b;padding:28px 48px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.lp-footer-copy{font-size:13px;color:#64748b;}
+.lp-footer-links{display:flex;gap:18px;}
+.lp-footer-links a{font-size:13px;color:#64748b;text-decoration:none;cursor:pointer;}
+.lp-footer-links a:hover{color:#f1f5f9;}
+
+/* TOAST */
+.toast-wrap{position:fixed;top:68px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:7px;max-width:320px;}
+.toast{padding:11px 15px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.1);}
+.toast.s{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;}
+.toast.e{background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;}
+.toast.i{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;}
+.toast.w{background:#fffbeb;color:#92400e;border:1px solid #fde68a;}
+
+/* CHAT */
+.chat-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin-bottom:12px;}
+.chat-msg{display:flex;flex-direction:column;max-width:82%;}
+.chat-msg.ag{align-self:flex-start;}.chat-msg.op{align-self:flex-end;}
+.chat-bubble{padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.6;}
+.chat-msg.ag .chat-bubble{background:#fff;border:1px solid #e2e8f0;}
+.chat-msg.op .chat-bubble{background:#e11d48;color:#fff;}
+.chat-time{font-size:11px;color:#94a3b8;margin-top:2px;padding:0 4px;}
+.chat-msg.op .chat-time{text-align:right;}
+
+@media(max-width:800px){
+  .layout{grid-template-columns:1fr;}.sidebar{display:none;}
+  .grid-4{grid-template-columns:1fr 1fr;}
+  .lp-hero{padding:52px 20px 44px;}.lp-nav{padding:0 20px;}
+  .lp-sec,.lp-footer,.lp-divider{padding-left:20px;padding-right:20px;}
+  .lp-steps,.lp-services,.lp-pricing,.lp-contact-grid,.lp-row{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- LOADING -->
+<div class="view active" id="v-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#07090f;min-height:100vh;">
+  <div style="display:flex;align-items:center;gap:8px;"><div class="lp-logo-icon">S</div><span style="font-size:20px;font-weight:800;color:#f1f5f9;">SOS <span style="color:#fb7185;">Tur</span></span></div>
+  <div class="spinner"></div>
+  <p style="font-size:13px;color:#64748b;">Carregando...</p>
+</div>
+
+<!-- LANDING -->
+<div class="view" id="v-landing">
+  <nav class="lp-nav">
+    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="goView('landing')">
+      <div class="lp-logo-icon">S</div>
+      <div class="lp-logo-name">SOS <span>Tur</span></div>
+    </div>
+    <div class="lp-nav-right">
+      <div class="lp-live"><div class="lp-dot"></div>Plantão ativo</div>
+      <span class="lp-clock" id="lp-clock"></span>
+      <button class="btn-ghost" onclick="openLogin('agency')" style="padding:7px 14px;font-size:13px;">Já sou cliente</button>
+      <button class="btn-lp-red" onclick="openLogin('ops')">Operadores →</button>
+    </div>
+  </nav>
+
+  <div class="lp-hero">
+    <div class="lp-eyebrow"><div class="lp-dot"></div>Plantão 24h — fins de semana e feriados</div>
+    <h1>Sua agência nunca mais fica<br>sem <em>suporte fora do horário</em></h1>
+    <p>Sua equipe não trabalha 24h — mas seus clientes viajam 24h. O SOS Tur é o plantão terceirizado que resolve qualquer imprevisto quando você não está disponível.</p>
+    <div class="lp-ctas">
+      <button class="btn-lp-red" style="padding:13px 28px;font-size:15px;" onclick="document.getElementById('lp-contact').scrollIntoView({behavior:'smooth'})">Contratar agora</button>
+      <button class="btn-ghost" style="padding:13px 28px;font-size:15px;" onclick="document.getElementById('lp-pricing').scrollIntoView({behavior:'smooth'})">Ver planos e preços</button>
+    </div>
+    <div class="lp-stats">
+      <div><div class="lp-stat-num">&lt; 8 min</div><div class="lp-stat-lbl">Tempo de resposta</div></div>
+      <div><div class="lp-stat-num">24/7</div><div class="lp-stat-lbl">Fins de semana e feriados</div></div>
+      <div><div class="lp-stat-num">98%</div><div class="lp-stat-lbl">Taxa de resolução</div></div>
+      <div><div class="lp-stat-num" id="hero-count">—</div><div class="lp-stat-lbl">Agências atendidas</div></div>
+    </div>
+  </div>
+
+  <div class="lp-divider"></div>
+
+  <div class="lp-sec">
+    <div class="lp-sec-label">Como funciona</div>
+    <h2 class="lp-sec-title">Em 4 passos simples</h2>
+    <div class="lp-steps">
+      <div class="lp-step"><div class="lp-step-num" style="background:#2563eb;">1</div><div class="lp-step-title">Você contrata o plano</div><div class="lp-step-desc">Entra em contato, escolhe o plano e criamos seu acesso exclusivo ao portal.</div></div>
+      <div class="lp-step"><div class="lp-step-num" style="background:#d97706;">2</div><div class="lp-step-title">Imprevisto acontece</div><div class="lp-step-desc">Sábado, 2h da manhã. Voo cancelado, passageiro no aeroporto sem suporte.</div></div>
+      <div class="lp-step"><div class="lp-step-num" style="background:#e11d48;">3</div><div class="lp-step-title">Abre o chamado</div><div class="lp-step-desc">Você acessa o portal exclusivo e abre o chamado com os detalhes.</div></div>
+      <div class="lp-step"><div class="lp-step-num" style="background:#16a34a;">4</div><div class="lp-step-title">Resolvemos tudo</div><div class="lp-step-desc">Nossa equipe assume em até 8 min — hotel, voo, seguro, documentação.</div></div>
+    </div>
+  </div>
+
+  <div class="lp-divider"></div>
+
+  <div class="lp-sec">
+    <div class="lp-sec-label">Serviços</div>
+    <h2 class="lp-sec-title">O que resolvemos</h2>
+    <p class="lp-sec-sub">Qualquer imprevisto com seu cliente em viagem, a qualquer hora do dia ou da noite.</p>
+    <div class="lp-services">
+      <div class="lp-srv"><div class="lp-srv-icon">✈️</div><div class="lp-srv-title">Cancelamento de voo</div><div class="lp-srv-desc">Reacomodação imediata e busca de alternativas. SLA: 8 minutos.</div></div>
+      <div class="lp-srv"><div class="lp-srv-icon">🔗</div><div class="lp-srv-title">Conexão perdida</div><div class="lp-srv-desc">Hotel, refeição, novo voo e toda a comunicação com o passageiro.</div></div>
+      <div class="lp-srv"><div class="lp-srv-icon">🏨</div><div class="lp-srv-title">Problema de hotel</div><div class="lp-srv-desc">Overbooking ou problema no quarto. Realocamos imediatamente.</div></div>
+      <div class="lp-srv"><div class="lp-srv-icon">🧳</div><div class="lp-srv-title">Bagagem extraviada</div><div class="lp-srv-desc">PIR, rastreamento e acompanhamento até a entrega.</div></div>
+      <div class="lp-srv"><div class="lp-srv-icon">🏥</div><div class="lp-srv-title">Emergência médica</div><div class="lp-srv-desc">Acionamos o seguro e apoiamos o passageiro e a família.</div></div>
+      <div class="lp-srv"><div class="lp-srv-icon">📄</div><div class="lp-srv-title">Documentação / visto</div><div class="lp-srv-desc">Problema de embarque — orientação e resolução emergencial.</div></div>
+    </div>
+  </div>
+
+  <div class="lp-divider"></div>
+
+  <div class="lp-sec" id="lp-pricing">
+    <div class="lp-sec-label">Planos</div>
+    <h2 class="lp-sec-title">Investimento simples e previsível</h2>
+    <p class="lp-sec-sub">Sem fidelidade. Entre em contato para contratar e receber seu acesso exclusivo.</p>
+    <div class="lp-pricing">
+      <div class="lp-price">
+        <div class="lp-price-plan">Essencial</div>
+        <div class="lp-price-amount"><sup>R$</sup>199<span style="font-size:16px;font-weight:400;color:#64748b;">,99/mês</span></div>
+        <div class="lp-price-period">Até 20 acionamentos por mês</div>
+        <div class="lp-price-div"></div>
+        <ul class="lp-price-feats">
+          <li><span class="ck">✓</span>Plantão fins de semana</li>
+          <li><span class="ck">✓</span>Cancelamento de voo</li>
+          <li><span class="ck">✓</span>Conexão perdida</li>
+          <li><span class="ck">✓</span>Portal exclusivo de chamados</li>
+          <li><span class="ck">✓</span>Relatório mensal</li>
+          <li class="no"><span class="ck">✗</span>Feriados nacionais</li>
+          <li class="no"><span class="ck">✗</span>Emergência médica</li>
+        </ul>
+        <button class="btn-ghost" style="width:100%;justify-content:center;padding:11px;" onclick="document.getElementById('lp-contact').scrollIntoView({behavior:'smooth'})">Contratar Essencial</button>
+      </div>
+      <div class="lp-price featured">
+        <div class="lp-price-tag">⭐ Mais contratado</div>
+        <div class="lp-price-plan">Profissional</div>
+        <div class="lp-price-amount"><sup>R$</sup>429<span style="font-size:16px;font-weight:400;color:#64748b;">,99/mês</span></div>
+        <div class="lp-price-period">Acionamentos ilimitados</div>
+        <div class="lp-price-div"></div>
+        <ul class="lp-price-feats">
+          <li><span class="ck">✓</span>Plantão 24/7 completo</li>
+          <li><span class="ck">✓</span>Todos os tipos de emergência</li>
+          <li><span class="ck">✓</span>Feriados nacionais</li>
+          <li><span class="ck">✓</span>Emergência médica</li>
+          <li><span class="ck">✓</span>WhatsApp direto com agente</li>
+          <li><span class="ck">✓</span>Relatório detalhado mensal</li>
+        </ul>
+        <button class="btn-lp-red" style="width:100%;justify-content:center;padding:11px;" onclick="document.getElementById('lp-contact').scrollIntoView({behavior:'smooth'})">Contratar Profissional</button>
+      </div>
+      <div class="lp-price">
+        <div class="lp-price-plan">Rede / Franquia</div>
+        <div class="lp-price-amount"><sup>R$</sup>639<span style="font-size:16px;font-weight:400;color:#64748b;">,00/mês</span></div>
+        <div class="lp-price-period">Até 5 agências no mesmo plano</div>
+        <div class="lp-price-div"></div>
+        <ul class="lp-price-feats">
+          <li><span class="ck">✓</span>Tudo do Profissional</li>
+          <li><span class="ck">✓</span>5 agências cobertas</li>
+          <li><span class="ck">✓</span>Gerente de conta dedicado</li>
+          <li><span class="ck">✓</span>SLA contratual assinado</li>
+          <li><span class="ck">✓</span>Relatório por agência</li>
+        </ul>
+        <button class="btn-ghost" style="width:100%;justify-content:center;padding:11px;" onclick="document.getElementById('lp-contact').scrollIntoView({behavior:'smooth'})">Contratar Rede</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lp-divider"></div>
+
+  <div class="lp-sec" id="lp-contact">
+    <div class="lp-contact-grid">
+      <div class="lp-contact-info">
+        <div class="lp-sec-label">Contato</div>
+        <h2>Vamos conversar?</h2>
+        <p>Preencha o formulário. Nossa equipe entra em contato, explica tudo e cria seu acesso exclusivo ao portal.</p>
+        <div class="lp-contact-items">
+          <div class="lp-ci"><div class="lp-ci-icon">💬</div>WhatsApp: (11) 99999-0000</div>
+          <div class="lp-ci"><div class="lp-ci-icon">📧</div>contato@sostur.com.br</div>
+          <div class="lp-ci"><div class="lp-ci-icon">🕐</div>Seg–Sex, 9h às 18h · Suporte 24h</div>
+        </div>
+        <div style="margin-top:24px;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.2);border-radius:10px;padding:16px;">
+          <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:8px;">✓ Como funciona o processo</div>
+          <div style="font-size:13px;color:#64748b;line-height:1.9;">1. Você preenche o formulário<br>2. Nossa equipe entra em contato<br>3. Você escolhe o plano e paga<br>4. Criamos seu login exclusivo<br>5. Portal ativado — plantão 24h disponível</div>
+        </div>
+      </div>
+      <div class="lp-form-card">
+        <div style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:18px;">Tenho interesse em contratar</div>
+        <div class="lp-row">
+          <div class="lp-field"><label>Nome da agência *</label><input id="ct-name" placeholder="Horizonte Viagens Ltda"></div>
+          <div class="lp-field"><label>Responsável *</label><input id="ct-resp" placeholder="João Silva"></div>
+        </div>
+        <div class="lp-row">
+          <div class="lp-field"><label>WhatsApp *</label><input id="ct-wpp" placeholder="(11) 99999-9999" type="tel"></div>
+          <div class="lp-field"><label>E-mail *</label><input id="ct-email" placeholder="contato@agencia.com" type="email"></div>
+        </div>
+        <div class="lp-field"><label>Cidade / Estado *</label><input id="ct-city" placeholder="São Paulo, SP"></div>
+        <div class="lp-field"><label>Plano de interesse</label>
+          <select id="ct-plan">
+            <option value="Essencial">Essencial — R$ 199,99/mês</option>
+            <option value="Profissional" selected>Profissional — R$ 429,99/mês</option>
+            <option value="Rede">Rede / Franquia — R$ 639,00/mês</option>
+          </select>
+        </div>
+        <div style="background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.12);border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#64748b;">🔒 Dados confidenciais. Retorno em até 2 horas úteis.</div>
+        <button class="btn-lp-red" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:10px;" id="ct-btn" onclick="submitContact()">Quero contratar o SOS Tur →</button>
+        <p style="font-size:11px;color:#64748b;text-align:center;margin-top:8px;">Sem fidelidade · Cancele quando quiser</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="lp-footer">
+    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="goView('landing')"><div class="lp-logo-icon">S</div><div class="lp-logo-name">SOS <span>Tur</span></div></div>
+    <div class="lp-footer-copy">© 2025 SOS Tur — Plantão 24h para Agências de Viagens</div>
+    <div class="lp-footer-links"><a>Privacidade</a><a>Termos</a><a onclick="openLogin('agency')">Acesso ao portal</a></div>
+  </footer>
+</div>
+
+<!-- LOGIN -->
+<div class="view" id="v-login">
+  <div style="width:100%;max-width:400px;margin:0 auto;">
+    <div class="login-logo" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:22px;">
+      <div class="lp-logo-icon">S</div>
+      <span style="font-size:20px;font-weight:800;color:#f1f5f9;">SOS <span style="color:#fb7185;">Tur</span></span>
+    </div>
+    <div class="login-card">
+      <div class="login-title">Acesso exclusivo</div>
+      <div class="login-sub">Entre com seu e-mail e senha<br>cadastrados pela equipe SOS Tur</div>
+      <div class="login-tabs">
+        <button class="login-tab on" id="ltab-a" onclick="switchTab('agency')">🏢 Agência</button>
+        <button class="login-tab" id="ltab-o" onclick="switchTab('ops')">⚡ Operações</button>
+      </div>
+      <div id="login-err" class="login-err"></div>
+      <div class="login-field"><label>E-mail</label><input id="l-email" type="email" placeholder="seu@email.com.br" onkeypress="if(event.key==='Enter')doLogin()"></div>
+      <div class="login-field"><label>Senha</label><input id="l-pass" type="password" placeholder="••••••••" onkeypress="if(event.key==='Enter')doLogin()"></div>
+      <button class="login-btn" id="l-btn" onclick="doLogin()">Entrar no sistema</button>
+      <div class="login-div"></div>
+      <div class="login-hint">💡 <strong>Demo:</strong> agencia@demo.com / demo123<br>ou ops@demo.com / demo123</div>
+      <div class="login-back"><a onclick="goView('landing')">← Voltar para o site</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- PORTAL DA AGÊNCIA -->
+<div class="view" id="v-agency">
+  <div class="topbar">
+    <div class="logo" onclick="goView('landing')"><div class="logo-icon">S</div><div class="logo-name">SOS <span>Tur</span></div></div>
+    <span style="font-size:12px;color:#64748b;font-weight:600;margin-left:8px;">Portal da agência</span>
+    <div class="topbar-right">
+      <div class="live-badge"><div class="live-dot"></div>Plantão ativo</div>
+      <span id="sy-clock-ag" style="font-size:13px;color:#64748b;font-weight:600;"></span>
+      <div style="display:flex;align-items:center;gap:7px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:100px;padding:3px 12px 3px 3px;">
+        <div class="sb-av" id="ag-av" style="background:#e11d48;width:26px;height:26px;font-size:10px;">--</div>
+        <div><div style="font-size:12px;font-weight:600;" id="ag-name">—</div><div style="font-size:10px;color:#64748b;">Agência</div></div>
+      </div>
+      <button class="btn" onclick="doLogout()" style="color:#e11d48;font-size:12px;padding:5px 10px;">Sair</button>
+    </div>
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sb-sec">Portal</div>
+      <button class="sb-btn on-b" id="sa-d"  onclick="agPg('d',this)">📊 Dashboard</button>
+      <button class="sb-btn" id="sa-n"  onclick="agPg('n',this)">🚨 Abrir chamado</button>
+      <button class="sb-btn" id="sa-t"  onclick="agPg('t',this)">📋 Meus chamados <span class="sb-count cnt-r" id="sa-cnt">0</span></button>
+      <div class="sb-sec">Conta</div>
+      <button class="sb-btn" id="sa-a"  onclick="agPg('a',this)">🏢 Minha agência</button>
+      <button class="sb-btn" id="sa-dc" onclick="agPg('dc',this)">📄 Documentos</button>
+      <div style="flex:1;"></div>
+      <div class="sb-user">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <div class="sb-av" id="ag-sb-av" style="background:#e11d48;width:30px;height:30px;">--</div>
+          <div><div style="font-weight:700;font-size:13px;" id="ag-sb-nm">—</div><div style="font-size:11px;color:#64748b;" id="ag-sb-pl">—</div></div>
+        </div>
+      </div>
+    </aside>
+    <div class="content">
+      <div class="page on" id="ap-d">
+        <div style="font-size:21px;font-weight:800;margin-bottom:3px;" id="ag-welcome">Bem-vindo</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px;" id="ag-plan">Carregando...</div>
+        <div class="grid-4">
+          <div class="stat"><div class="stat-label">Chamados</div><div class="stat-value" id="ag-tot">0</div></div>
+          <div class="stat" style="border-left:4px solid #e11d48;"><div class="stat-label">Em aberto</div><div class="stat-value" id="ag-op" style="color:#e11d48;">0</div></div>
+          <div class="stat" style="border-left:4px solid #16a34a;"><div class="stat-label">Resolvidos</div><div class="stat-value" id="ag-res" style="color:#16a34a;">0</div></div>
+          <div class="stat"><div class="stat-label">Tempo médio</div><div class="stat-value" id="ag-sla">—</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card"><div class="card-title">Chamados recentes</div><div id="ag-recent"></div></div>
+          <div class="card">
+            <div class="card-title">Precisa de ajuda agora?</div>
+            <p style="font-size:13px;color:#64748b;margin-bottom:16px;line-height:1.7;">Nossa equipe assume em até 8 minutos, 24 horas por dia, todos os dias do ano.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <button class="btn btn-red btn-full" onclick="agPg('n',document.getElementById('sa-n'))">🚨 Abrir chamado emergencial</button>
+              <button class="btn btn-full" onclick="toast('📱 WhatsApp: (11) 99999-0000 — 24/7','i')">💬 WhatsApp: (11) 99999-0000</button>
+              <button class="btn btn-full" onclick="toast('📞 0800 000 0000 — gratuito 24/7','i')">📞 Ligar: 0800 000 0000</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page" id="ap-n">
+        <div style="font-size:21px;font-weight:800;margin-bottom:3px;">Abrir chamado 🚨</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px;">Equipe acionada imediatamente após o envio.</div>
+        <div class="card">
+          <div class="row"><div class="field"><label>Tipo *</label><select id="nc-tp"><option>Cancelamento de voo</option><option>Conexão perdida</option><option>Problema de hotel</option><option>Bagagem extraviada</option><option>Emergência médica</option><option>Documentação / visto</option><option>Outro</option></select></div><div class="field"><label>Prioridade *</label><select id="nc-pr"><option value="P1">P1 — Crítico</option><option value="P2">P2 — Urgente</option><option value="P3">P3 — Normal</option></select></div></div>
+          <div class="row"><div class="field"><label>Passageiro *</label><input id="nc-px" placeholder="Maria da Silva"></div><div class="field"><label>Qtd. passageiros</label><input id="nc-npx" type="number" value="1" min="1"></div></div>
+          <div class="row"><div class="field"><label>Voo / Rota *</label><input id="nc-fl" placeholder="GRU → MIA, AA906, 15/04"></div><div class="field"><label>Localização</label><input id="nc-loc" placeholder="Aeroporto de Guarulhos, T3"></div></div>
+          <div class="field"><label>Descrição completa *</label><textarea id="nc-desc" rows="4" placeholder="O que aconteceu, horário, detalhes importantes..."></textarea></div>
+          <div class="row"><div class="field"><label>Tel. do passageiro</label><input id="nc-pp" placeholder="(11) 99999-9999" type="tel"></div><div class="field"><label>Seu contato</label><input id="nc-mp" placeholder="(11) 99999-9999" type="tel"></div></div>
+          <button class="btn btn-red btn-full" id="sub-btn" onclick="submitTicket()">🚨 Acionar plantão agora</button>
+        </div>
+      </div>
+      <div class="page" id="ap-t">
+        <div style="font-size:21px;font-weight:800;margin-bottom:3px;">Meus chamados</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px;">Somente os chamados da sua agência.</div>
+        <div id="ag-tlist"></div>
+      </div>
+      <div class="page" id="ap-a">
+        <div style="font-size:21px;font-weight:800;margin-bottom:3px;">Dados da agência</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px;">Informações do seu cadastro e plano contratado.</div>
+        <div id="ag-card"></div>
+      </div>
+      <div class="page" id="ap-dc">
+        <div style="font-size:21px;font-weight:800;margin-bottom:20px;">Documentos</div>
+        <div class="card">
+          <div class="stat-row"><span>Contrato de serviço SOS Tur</span><button class="btn btn-blue" onclick="toast('Baixando contrato...','i')" style="font-size:12px;padding:5px 11px;">Baixar PDF</button></div>
+          <div class="stat-row"><span>Relatório de chamados — Março 2025</span><button class="btn" onclick="toast('Gerando...','i')" style="font-size:12px;padding:5px 11px;">Baixar</button></div>
+          <div class="stat-row"><span>Manual do portal</span><button class="btn" onclick="toast('Abrindo...','i')" style="font-size:12px;padding:5px 11px;">Ver online</button></div>
+          <div class="stat-row"><span>Política de SLA</span><button class="btn" onclick="toast('Abrindo...','i')" style="font-size:12px;padding:5px 11px;">Ver online</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CENTRAL DE OPERAÇÕES -->
+<div class="view" id="v-ops">
+  <div class="topbar">
+    <div class="logo" onclick="goView('landing')"><div class="logo-icon">S</div><div class="logo-name">SOS <span>Tur</span></div></div>
+    <span style="font-size:12px;color:#64748b;font-weight:600;margin-left:8px;">Central de operações</span>
+    <div class="topbar-right">
+      <div class="live-badge"><div class="live-dot"></div>Plantão ativo</div>
+      <span id="sy-clock-ops" style="font-size:13px;color:#64748b;font-weight:600;"></span>
+      <div style="display:flex;align-items:center;gap:7px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:100px;padding:3px 12px 3px 3px;">
+        <div class="sb-av" id="ops-av" style="background:#2563eb;width:26px;height:26px;font-size:10px;">--</div>
+        <div><div style="font-size:12px;font-weight:600;" id="ops-name">—</div><div style="font-size:10px;color:#64748b;">Operações</div></div>
+      </div>
+      <button class="btn" onclick="doLogout()" style="color:#e11d48;font-size:12px;padding:5px 10px;">Sair</button>
+    </div>
+  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sb-sec">Operações</div>
+      <button class="sb-btn on-r" id="so-d" onclick="opsPg('d',this)">📊 Dashboard</button>
+      <button class="sb-btn" id="so-o" onclick="opsPg('o',this)">🚨 Chamados <span class="sb-count cnt-r" id="so-cnt">0</span></button>
+      <button class="sb-btn" id="so-r" onclick="opsPg('r',this)">✅ Resolvidos</button>
+      <button class="sb-btn" id="so-c" onclick="opsPg('c',this)">💬 Chat</button>
+      <div class="sb-sec">Gestão</div>
+      <button class="sb-btn" id="so-a" onclick="opsPg('a',this)">🏢 Agências <span class="sb-count cnt-g" id="so-agcnt">0</span></button>
+      <button class="sb-btn" id="so-t" onclick="opsPg('t',this)">👥 Equipe</button>
+      <button class="sb-btn" id="so-rep" onclick="opsPg('rep',this)">📈 Relatórios</button>
+    </aside>
+    <div class="content">
+      <div class="page on" id="op-d">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+          <div><div style="font-size:21px;font-weight:800;margin-bottom:2px;">Central de operações</div><div style="font-size:13px;color:#64748b;">Plantão ativo — <span id="ops-time"></span></div></div>
+          <div style="display:flex;gap:7px;"><button class="btn" onclick="opsPg('o',document.getElementById('so-o'))" style="font-size:12px;">Ver chamados</button><button class="btn btn-blue" onclick="opsPg('a',document.getElementById('so-a'))" style="font-size:12px;">Agências</button></div>
+        </div>
+        <div class="grid-4">
+          <div class="stat" style="border-left:4px solid #e11d48;"><div class="stat-label">Abertos</div><div class="stat-value" id="ops-op" style="color:#e11d48;">0</div><div style="font-size:12px;color:#64748b;">Aguardando</div></div>
+          <div class="stat" style="border-left:4px solid #16a34a;"><div class="stat-label">Resolvidos</div><div class="stat-value" id="ops-res" style="color:#16a34a;">0</div><div style="font-size:12px;color:#64748b;">Com sucesso</div></div>
+          <div class="stat" style="border-left:4px solid #2563eb;"><div class="stat-label">Agências</div><div class="stat-value" id="ops-ag">0</div><div style="font-size:12px;color:#64748b;">Com plano vigente</div></div>
+          <div class="stat" style="border-left:4px solid #d97706;"><div class="stat-label">Taxa</div><div class="stat-value" id="ops-rate">—</div><div style="font-size:12px;color:#64748b;">Meta: 98%</div></div>
+        </div>
+        <div class="grid-2">
+          <div class="card"><div class="card-title">Chamados críticos <span class="badge bdg-r" id="p1-b">0 P1</span></div><div id="ops-crit"></div></div>
+          <div class="card"><div class="card-title">Equipe agora</div><div id="ops-team-now"></div><div class="divider"></div><button class="btn btn-green" onclick="opsPg('t',document.getElementById('so-t'))" style="font-size:12px;padding:6px 12px;">Gerenciar equipe</button></div>
+        </div>
+      </div>
+      <div class="page" id="op-o">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:21px;font-weight:800;">Chamados em aberto</div>
+          <div style="display:flex;gap:6px;"><button class="btn btn-red" onclick="filterT('P1')" style="font-size:12px;padding:5px 10px;">P1</button><button class="btn" onclick="filterT('P2')" style="font-size:12px;padding:5px 10px;">P2</button><button class="btn" onclick="filterT('P3')" style="font-size:12px;padding:5px 10px;">P3</button><button class="btn" onclick="filterT('all')" style="font-size:12px;padding:5px 10px;">Todos</button></div>
+        </div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:14px;">Todos os chamados de todas as agências.</div>
+        <div id="ops-olist"></div>
+      </div>
+      <div class="page" id="op-r">
+        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Chamados resolvidos</div>
+        <div id="ops-rlist"></div>
+      </div>
+      <div class="page" id="op-c">
+        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Chat com agência</div>
+        <div class="grid-2">
+          <div class="card" style="padding:14px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid #e2e8f0;">Atendimento ativo</div>
+            <div class="chat-box" id="chat-box">
+              <div class="chat-msg ag"><div class="chat-bubble">Voo cancelado, 4 passageiros no aeroporto. Precisamos de ajuda urgente.</div><div class="chat-time">há 8 min</div></div>
+              <div class="chat-msg op"><div class="chat-bubble">Recebemos! Buscando alternativas agora. Retorno em 5 minutos.</div><div class="chat-time">há 6 min</div></div>
+              <div class="chat-msg op"><div class="chat-bubble">LATAM LA8078 às 11h30. Confirmo os 4 assentos?</div><div class="chat-time">há 2 min</div></div>
+              <div class="chat-msg ag"><div class="chat-bubble">Sim! Passageiros no terminal 2.</div><div class="chat-time">há 1 min</div></div>
+            </div>
+            <div style="display:flex;gap:8px;"><input id="chat-inp" style="flex:1;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;outline:none;background:#f8fafc;" placeholder="Escreva..." onkeypress="if(event.key==='Enter')sendChat()"><button class="btn btn-blue" onclick="sendChat()" style="font-size:12px;padding:7px 12px;">Enviar</button></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Respostas rápidas</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <button class="btn" style="justify-content:flex-start;font-size:12px;" onclick="qr('Chamado recebido! Equipe acionada. Retorno em até 8 minutos.')">Chamado recebido</button>
+              <button class="btn" style="justify-content:flex-start;font-size:12px;" onclick="qr('Verificando opções. Aguarde 5 minutos.')">Verificando opções</button>
+              <button class="btn" style="justify-content:flex-start;font-size:12px;" onclick="qr('Voo alternativo encontrado. Confirmando assentos agora.')">Voo alternativo</button>
+              <button class="btn" style="justify-content:flex-start;font-size:12px;" onclick="qr('Hotel reservado. Passageiros podem ir ao balcão.')">Hotel reservado</button>
+              <button class="btn btn-green" style="justify-content:flex-start;font-size:12px;" onclick="qr('Chamado resolvido! Resumo enviado. Boa viagem! ✅')">Resolvido ✅</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page" id="op-a">
+        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Agências clientes</div>
+        <div class="card"><div id="ops-aglist"></div></div>
+      </div>
+      <div class="page" id="op-t">
+        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Equipe de plantão</div>
+        <div class="grid-2">
+          <div class="card"><div class="card-title">Agentes <button class="btn btn-blue" onclick="document.getElementById('tm-nm').focus()" style="font-size:12px;padding:5px 10px;">+ Adicionar</button></div><div id="team-list"></div></div>
+          <div class="card">
+            <div class="card-title">Novo agente</div>
+            <div class="field"><label>Nome *</label><input id="tm-nm" placeholder="Renata Ferreira"></div>
+            <div class="field"><label>WhatsApp *</label><input id="tm-wpp" placeholder="(11) 99999-9999" type="tel"></div>
+            <div class="field"><label>Turno</label><select id="tm-sh"><option>Madrugada (00h–08h)</option><option>Manhã (08h–16h)</option><option>Tarde/Noite (16h–00h)</option><option>Escala rotativa</option></select></div>
+            <div class="field"><label>Especialidade</label><select id="tm-sp"><option>Geral</option><option>Voos e conexões</option><option>Hotéis</option><option>Emergência médica</option><option>Documentação</option></select></div>
+            <button class="btn btn-green btn-full" onclick="saveAgent()">Cadastrar agente</button>
+          </div>
+        </div>
+      </div>
+      <div class="page" id="op-rep">
+        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Relatórios</div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Resumo financeiro</div>
+            <div class="stat-row"><span style="color:#64748b;">Agências ativas</span><span style="font-weight:700;" id="rep-ag">0</span></div>
+            <div class="stat-row"><span style="color:#64748b;">MRR</span><span style="font-weight:700;color:#16a34a;" id="rep-mrr">R$ 0</span></div>
+            <div class="stat-row"><span style="color:#64748b;">Ticket médio</span><span style="font-weight:700;" id="rep-avg">R$ 0</span></div>
+            <div class="stat-row"><span style="color:#64748b;">Total chamados</span><span style="font-weight:700;" id="rep-calls">0</span></div>
+            <div class="stat-row"><span style="color:#64748b;">Taxa de resolução</span><span style="font-weight:700;color:#16a34a;" id="rep-rate">—</span></div>
+          </div>
+          <div class="card"><div class="card-title">Por tipo</div><div id="rep-types"><div class="empty" style="padding:20px;">Sem dados ainda.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://SEU_PROJETO.supabase.co';
+const SUPABASE_KEY='SUA_ANON_KEY_AQUI';
+const DEMO={'agencia@demo.com':{pw:'demo123',role:'agency',name:'Agência Demo'},'ops@demo.com':{pw:'demo123',role:'ops',name:'Operador Demo'}};
+let db=null,user=null,agency=null,tf='all',ltab='agency';
+
+async function init(){
+  try{db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);await loadDefaultTeam();}catch(e){console.warn(e.message);}
+  startClocks();
+  const s=sessionStorage.getItem('sos');
+  if(s){try{user=JSON.parse(s);setUserUI();hide();if(user.role==='ops'){show('ops');loadOps();}else{await loadAgencyUser();show('agency');loadAgencyPortal();}return;}catch(e){sessionStorage.removeItem('sos');}}
+  hide();show('landing');loadHeroCount();
+}
+function hide(){document.getElementById('v-loading').style.display='none';}
+function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById('v-'+id).classList.add('active');window.scrollTo(0,0);}
+function goView(v){
+  if((v==='agency'||v==='ops')&&!user){openLogin(v==='ops'?'ops':'agency');return;}
+  if(v==='ops'&&user?.role!=='ops'){toast('Acesso restrito à equipe de operações.','e');return;}
+  if(v==='agency'&&user?.role==='ops'){toast('Operadores usam a Central de Operações.','e');return;}
+  show(v);
+  if(v==='agency')loadAgencyPortal();
+  if(v==='ops')loadOps();
+  if(v==='landing')loadHeroCount();
+}
+function openLogin(r){switchTab(r);show('login');setTimeout(()=>document.getElementById('l-email')?.focus(),100);}
+function switchTab(t){ltab=t;document.getElementById('ltab-a').classList.toggle('on',t==='agency');document.getElementById('ltab-o').classList.toggle('on',t==='ops');document.getElementById('login-err').style.display='none';}
+async function doLogin(){
+  const email=document.getElementById('l-email').value.trim().toLowerCase();
+  const pass=document.getElementById('l-pass').value;
+  const btn=document.getElementById('l-btn');
+  if(!email||!pass){showErr('Preencha e-mail e senha.');return;}
+  btn.disabled=true;btn.textContent='Entrando...';
+  const demo=DEMO[email];
+  if(demo&&demo.pw===pass){
+    if(ltab!==demo.role){btn.disabled=false;btn.textContent='Entrar no sistema';showErr('Este acesso não é válido para este portal.');return;}
+    user={email,name:demo.name,role:demo.role};await finish();btn.disabled=false;btn.textContent='Entrar no sistema';return;
+  }
+  if(db){
+    try{
+      const {data,error}=await db.auth.signInWithPassword({email,password:pass});
+      if(!error&&data.user){
+        const {data:p}=await db.from('sos_users').select('*').eq('email',email).maybeSingle();
+        const role=p?.role||ltab;
+        if(role!==ltab){await db.auth.signOut();btn.disabled=false;btn.textContent='Entrar no sistema';showErr('Este login não tem acesso a este portal.');return;}
+        user={email,name:p?.name||email.split('@')[0],role,agencyId:p?.agency_id};
+        await finish();btn.disabled=false;btn.textContent='Entrar no sistema';return;
+      }
+    }catch(e){console.warn(e.message);}
+  }
+  btn.disabled=false;btn.textContent='Entrar no sistema';showErr('E-mail ou senha incorretos.');
+}
+function showErr(m){const el=document.getElementById('login-err');el.textContent=m;el.style.display='block';}
+async function finish(){
+  sessionStorage.setItem('sos',JSON.stringify(user));
+  document.getElementById('l-email').value='';document.getElementById('l-pass').value='';
+  document.getElementById('login-err').style.display='none';
+  setUserUI();
+  if(user.role==='ops'){show('ops');loadOps();toast('Bem-vindo, '+user.name+'!','s');}
+  else{await loadAgencyUser();show('agency');loadAgencyPortal();toast('Bem-vindo, '+user.name+'!','s');}
+}
+function setUserUI(){
+  if(!user)return;
+  const ini=user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  s('ag-av',ini);s('ag-name',user.name);s('ag-sb-av',ini);s('ag-sb-nm',user.name);
+  s('ops-av',ini);s('ops-name',user.name);
+}
+function doLogout(){if(!confirm('Deseja sair?'))return;user=null;agency=null;sessionStorage.removeItem('sos');if(db)db.auth.signOut().catch(()=>{});show('landing');loadHeroCount();toast('Você saiu.','i');}
+async function loadAgencyUser(){
+  if(!db||!user)return;
+  try{
+    if(user.agencyId){const {data}=await db.from('sos_agencies').select('*').eq('id',user.agencyId).maybeSingle();if(data){agency=data;return;}}
+    const ags=await dbQ('sos_agencies');
+    agency=ags.find(a=>a.email===user.email)||ags[ags.length-1]||null;
+  }catch(e){}
+}
+function startClocks(){function tick(){const t=new Date().toLocaleTimeString('pt-BR');['lp-clock','sy-clock-ag','sy-clock-ops','ops-time'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});}setInterval(tick,1000);tick();}
+function toast(msg,type='s',dur=3500){const w=document.getElementById('toast-wrap');const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;w.appendChild(el);setTimeout(()=>el.remove(),dur);}
+const cur=n=>'R$ '+Math.round(n||0).toLocaleString('pt-BR');
+async function dbQ(tbl,f={}){if(!db)return[];try{let q=db.from(tbl).select('*');Object.entries(f).forEach(([k,v])=>q=q.eq(k,v));const {data}=await q.order('created_at',{ascending:false});return data||[];}catch(e){return[];}}
+async function dbI(tbl,row){if(!db)return null;try{const {data}=await db.from(tbl).insert(row).select().single();return data||null;}catch(e){return null;}}
+async function dbU(tbl,id,upd){if(!db)return;try{await db.from(tbl).update(upd).eq('id',id);}catch(e){}}
+async function dbD(tbl,id){if(!db)return;try{await db.from(tbl).delete().eq('id',id);}catch(e){}}
+
+async function loadHeroCount(){const [ags,tks]=await Promise.all([dbQ('sos_agencies'),dbQ('sos_tickets')]);const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};s('hero-count',ags.length||'—');s('mock-open',tks.filter(t=>t.status==='open').length);s('mock-res',tks.filter(t=>t.status==='resolved').length);s('mock-ag',ags.length);}
+
+async function submitContact(){
+  const name=document.getElementById('ct-name').value.trim();const resp=document.getElementById('ct-resp').value.trim();
+  const wpp=document.getElementById('ct-wpp').value.trim();const email=document.getElementById('ct-email').value.trim();
+  const city=document.getElementById('ct-city').value.trim();const plan=document.getElementById('ct-plan').value;
+  const price=plan==='Essencial'?199.99:plan==='Profissional'?429.99:639;
+  if(!name||!resp||!wpp||!email||!city){toast('Preencha todos os campos.','e');return;}
+  const btn=document.getElementById('ct-btn');btn.disabled=true;btn.textContent='Enviando...';
+  await dbI('sos_agencies',{name,resp,wpp,email,city,plan,price,status:'lead',tickets:0});
+  btn.disabled=false;btn.textContent='Quero contratar o SOS Tur →';
+  ['ct-name','ct-resp','ct-wpp','ct-email','ct-city'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  toast('✅ Interesse registrado! Entraremos em contato em até 2 horas.','s',6000);
+  loadHeroCount();
+}
+
+function agPg(p,btn){document.querySelectorAll('#v-agency .page').forEach(x=>x.classList.remove('on'));document.getElementById('ap-'+p).classList.add('on');document.querySelectorAll('#v-agency .sb-btn').forEach(b=>b.classList.remove('on-b','on-r','on-g'));btn.classList.add('on-b');}
+function opsPg(p,btn){document.querySelectorAll('#v-ops .page').forEach(x=>x.classList.remove('on'));document.getElementById('op-'+p).classList.add('on');document.querySelectorAll('#v-ops .sb-btn').forEach(b=>b.classList.remove('on-r','on-b','on-g'));btn.classList.add('on-r');if(p==='t')loadTeamList();if(p==='rep')renderReports();if(p==='o')filterT(tf);}
+
+async function loadAgencyPortal(){
+  if(!user)return;if(!agency)await loadAgencyUser();
+  const ini=agency?agency.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase():user.name[0];
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  s('ag-av',ini);s('ag-name',user.name);s('ag-sb-av',ini);s('ag-sb-nm',user.name);
+  if(agency){s('ag-sb-pl',agency.plan);s('ag-welcome','Olá, '+agency.name+' 👋');s('ag-plan','Plano '+agency.plan+' — '+cur(agency.price)+'/mês — Ativo');}
+  else{s('ag-welcome','Olá, '+user.name+' 👋');s('ag-plan','Entre em contato para ativar seu acesso completo.');}
+  const tks=agency?await dbQ('sos_tickets',{agency_id:agency.id}):[];
+  const open=tks.filter(t=>t.status==='open').length;
+  const res=tks.filter(t=>t.status==='resolved').length;
+  s('ag-tot',tks.length);s('ag-op',open);s('ag-res',res);s('ag-sla',res>0?'< 8 min':'—');s('sa-cnt',open);
+  const rec=document.getElementById('ag-recent');if(rec)rec.innerHTML=tks.length?tks.slice(0,3).map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado ainda.</div>';
+  const tl=document.getElementById('ag-tlist');if(tl)tl.innerHTML=tks.length?tks.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado ainda.</div>';
+  renderAgCard();
+}
+function renderAgCard(){
+  const el=document.getElementById('ag-card');if(!el)return;
+  if(!agency){el.innerHTML='<div class="empty">Agência não encontrada.<br>Entre em contato com a equipe SOS Tur.</div>';return;}
+  el.innerHTML=`<div class="card"><div class="grid-2">
+    <div><div class="stat-row"><span style="color:#64748b;">Nome</span><span style="font-weight:700;">${agency.name}</span></div><div class="stat-row"><span style="color:#64748b;">Responsável</span><span>${agency.resp}</span></div><div class="stat-row"><span style="color:#64748b;">WhatsApp</span><span>${agency.wpp}</span></div><div class="stat-row"><span style="color:#64748b;">E-mail</span><span>${agency.email}</span></div></div>
+    <div><div class="stat-row"><span style="color:#64748b;">Cidade</span><span>${agency.city}</span></div><div class="stat-row"><span style="color:#64748b;">Plano</span><span class="badge bdg-r">${agency.plan}</span></div><div class="stat-row"><span style="color:#64748b;">Valor</span><span style="font-weight:700;color:#16a34a;">${cur(agency.price)}/mês</span></div><div class="stat-row"><span style="color:#64748b;">Chamados</span><span>${agency.tickets||0}</span></div></div>
+  </div></div>`;
+}
+
+async function submitTicket(){
+  if(!agency){toast('Agência não encontrada.','e');return;}
+  const type=document.getElementById('nc-tp').value;const priority=document.getElementById('nc-pr').value;
+  const pax=document.getElementById('nc-px').value.trim();const npax=parseInt(document.getElementById('nc-npx').value)||1;
+  const flight=document.getElementById('nc-fl').value.trim();const location=document.getElementById('nc-loc').value.trim();
+  const desc=document.getElementById('nc-desc').value.trim();const paxPhone=document.getElementById('nc-pp').value.trim();const myPhone=document.getElementById('nc-mp').value.trim();
+  if(!pax||!flight||!desc){toast('Preencha passageiro, voo e descrição.','e');return;}
+  const btn=document.getElementById('sub-btn');btn.disabled=true;btn.textContent='Enviando...';
+  const num='SOS-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+String(Date.now()).slice(-4);
+  const sla=priority==='P1'?8:priority==='P2'?20:60;
+  const result=await dbI('sos_tickets',{num,type,priority,pax,npax,flight,location,description:desc,pax_phone:paxPhone,my_phone:myPhone,agency_id:agency.id,agency_name:agency.name,status:'open',sla_minutes:sla,assigned_to:null});
+  btn.disabled=false;btn.textContent='🚨 Acionar plantão agora';
+  if(result){await dbU('sos_agencies',agency.id,{tickets:(agency.tickets||0)+1});agency.tickets=(agency.tickets||0)+1;['nc-px','nc-npx','nc-fl','nc-loc','nc-desc','nc-pp','nc-mp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});toast('Chamado '+num+' aberto! Equipe acionada.','s');loadAgencyPortal();agPg('t',document.getElementById('sa-t'));}
+  else{toast('Erro ao abrir chamado.','e');}
+}
+
+async function loadOps(){await updateOpsStats();renderOpsTeamNow();}
+async function updateOpsStats(){
+  const [tks,ags]=await Promise.all([dbQ('sos_tickets'),dbQ('sos_agencies')]);
+  const open=tks.filter(t=>t.status==='open');const res=tks.filter(t=>t.status==='resolved');
+  const rate=tks.length?Math.round(res.length/tks.length*100)+'%':'—';
+  const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  s('ops-op',open.length);s('ops-res',res.length);s('ops-ag',ags.length);s('ops-rate',rate);
+  s('so-cnt',open.length);s('so-agcnt',ags.length);
+  const p1=open.filter(t=>t.priority==='P1');s('p1-b',p1.length+' P1');
+  const crit=document.getElementById('ops-crit');if(crit)crit.innerHTML=p1.length?p1.map(t=>ticketHTML(t,true)).join(''):'<div class="empty" style="padding:16px;">Nenhum chamado crítico ✅</div>';
+  filterT(tf);
+  const rl=document.getElementById('ops-rlist');if(rl)rl.innerHTML=res.length?res.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum resolvido.</div>';
+  renderOpsAgencies(ags);
+  s('rep-ag',ags.length);const mrr=ags.reduce((s,a)=>s+(a.price||0),0);s('rep-mrr',cur(mrr)+'/mês');s('rep-avg',ags.length?cur(mrr/ags.length):cur(0));s('rep-calls',tks.length);s('rep-rate',rate);
+  const byType={};tks.forEach(t=>{byType[t.type]=(byType[t.type]||0)+1;});
+  const rt=document.getElementById('rep-types');if(rt)rt.innerHTML=Object.keys(byType).length?Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="stat-row"><span style="color:#64748b;">${k}</span><span style="font-weight:700;">${v}</span></div>`).join(''):'<div class="empty" style="padding:16px;">Sem dados.</div>';
+}
+async function filterT(f){tf=f;const tks=await dbQ('sos_tickets');const open=tks.filter(t=>t.status==='open');const filt=f==='all'?open:open.filter(t=>t.priority===f);const el=document.getElementById('ops-olist');if(el)el.innerHTML=filt.length?filt.map(t=>ticketHTML(t,true)).join(''):'<div class="empty">Nenhum chamado.</div>';}
+async function assignTicket(id){const team=await dbQ('sos_team');const av=team.find(a=>a.status==='available');const name=av?av.name:(user?.name||'Agente');await dbU('sos_tickets',id,{assigned_to:name});if(av)await dbU('sos_team',av.id,{status:'busy'});toast('Assumido por '+name,'i');updateOpsStats();renderOpsTeamNow();}
+async function resolveTicket(id){await dbU('sos_tickets',id,{status:'resolved',resolved_at:new Date().toISOString()});toast('Chamado resolvido! ✅','s');updateOpsStats();}
+function renderOpsAgencies(ags){const el=document.getElementById('ops-aglist');if(!el)return;if(!ags.length){el.innerHTML='<div class="empty">Nenhuma agência.</div>';return;}el.innerHTML=`<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Agência</th><th>Plano</th><th>Cidade</th><th>Valor/mês</th><th>Chamados</th><th>Status</th><th></th></tr></thead><tbody>${ags.map(ag=>`<tr><td><div style="font-weight:700;">${ag.name}</div><div style="font-size:12px;color:#64748b;">${ag.resp}</div></td><td><span class="badge bdg-r">${ag.plan}</span></td><td>${ag.city}</td><td style="font-weight:700;color:#16a34a;">${cur(ag.price)}</td><td>${ag.tickets||0}</td><td><span class="badge ${ag.status==='lead'?'bdg-a':'bdg-g'}">${ag.status==='lead'?'Lead':'Ativo'}</span></td><td><button class="btn" onclick="removeAg('${ag.id}','${ag.name}')" style="font-size:11px;padding:3px 8px;color:#e11d48;">✕</button></td></tr>`).join('')}</tbody></table></div>`;}
+async function removeAg(id,name){if(!confirm('Remover "'+name+'"?'))return;await dbD('sos_agencies',id);toast('Removida.','w');updateOpsStats();}
+function ticketHTML(t,ops){const pc=t.priority==='P1'?'p1':t.priority==='P2'?'p2':'p3';const sc=t.status==='resolved'?'done':pc;const bc=t.priority==='P1'?'bdg-r':t.priority==='P2'?'bdg-a':'bdg-g';return `<div class="ticket ${sc}"><div class="t-hd"><span class="t-num">#${t.num}</span><span class="badge ${bc}">${t.priority}</span><span class="badge ${t.status==='open'?'bdg-r':'bdg-g'}">${t.status==='open'?'Em aberto':'Resolvido'}</span>${t.assigned_to?`<span class="badge bdg-b">Agente: ${t.assigned_to}</span>`:''}<span style="margin-left:auto;font-size:11px;color:#94a3b8;">${new Date(t.created_at).toLocaleString('pt-BR')}</span></div><div class="t-title">${t.type}</div><div class="t-meta"><strong>${t.agency_name}</strong> · ${t.npax} pax · ${t.flight}</div><div class="t-desc">${t.description}${t.location?' — '+t.location:''}</div>${t.resolved_at?`<div style="font-size:12px;color:#16a34a;margin-bottom:8px;">✅ Resolvido: ${new Date(t.resolved_at).toLocaleString('pt-BR')}</div>`:''}<div class="t-actions">${ops&&t.status==='open'?`<button class="btn btn-blue" onclick="assignTicket('${t.id}')" style="font-size:12px;padding:6px 11px;">Assumir</button><button class="btn btn-green" onclick="resolveTicket('${t.id}')" style="font-size:12px;padding:6px 11px;">Resolver</button><button class="btn" onclick="opsPg('c',document.getElementById('so-c'))" style="font-size:12px;padding:6px 11px;">Chat</button>`:''} ${!ops&&t.status==='open'?`<span class="badge bdg-a">Aguardando equipe SOS Tur</span>`:''} ${t.status==='resolved'?`<span class="badge bdg-g">Encerrado</span>`:''}</div></div>`;}
+
+async function loadDefaultTeam(){if(!db)return;const ex=await dbQ('sos_team');if(ex.length>0)return;const defs=[{name:'Renata Ferreira',wpp:'(11)99001-0001',shift:'Madrugada (00h–08h)',spec:'Geral',status:'available'},{name:'Marcos Oliveira',wpp:'(11)99001-0002',shift:'Manhã (08h–16h)',spec:'Voos e conexões',status:'available'},{name:'Julia Santos',wpp:'(11)99001-0003',shift:'Tarde/Noite (16h–00h)',spec:'Hotéis',status:'available'}];for(const d of defs)await dbI('sos_team',d);}
+async function renderOpsTeamNow(){const team=await dbQ('sos_team');const el=document.getElementById('ops-team-now');if(!el)return;el.innerHTML=team.slice(0,4).map(a=>`<div class="agent-row"><div class="a-av" style="background:${a.status==='available'?'#16a34a':'#d97706'};">${a.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${a.name}</div><div style="font-size:12px;color:#64748b;">${a.shift}</div></div><span class="badge ${a.status==='available'?'bdg-g':'bdg-a'}">${a.status==='available'?'Disponível':'Ocupado'}</span></div>`).join('');}
+async function loadTeamList(){const team=await dbQ('sos_team');const el=document.getElementById('team-list');if(!el)return;if(!team.length){el.innerHTML='<div class="empty">Nenhum agente.</div>';return;}el.innerHTML=team.map(a=>`<div class="agent-row"><div class="a-av" style="background:#2563eb;">${a.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${a.name}</div><div style="font-size:12px;color:#64748b;">${a.shift} · ${a.spec}</div></div><div style="display:flex;align-items:center;gap:5px;"><span class="badge ${a.status==='available'?'bdg-g':'bdg-a'}">${a.status==='available'?'Disponível':'Ocupado'}</span><button class="btn" onclick="toggleAgent('${a.id}','${a.status}')" style="font-size:11px;padding:3px 8px;">${a.status==='available'?'Ocupar':'Liberar'}</button><button class="btn" onclick="deleteAgent('${a.id}')" style="font-size:11px;padding:3px 8px;color:#e11d48;">✕</button></div></div>`).join('');}
+async function saveAgent(){const name=document.getElementById('tm-nm').value.trim();const wpp=document.getElementById('tm-wpp').value.trim();const shift=document.getElementById('tm-sh').value;const spec=document.getElementById('tm-sp').value;if(!name||!wpp){toast('Nome e WhatsApp obrigatórios.','e');return;}await dbI('sos_team',{name,wpp,shift,spec,status:'available'});document.getElementById('tm-nm').value='';document.getElementById('tm-wpp').value='';toast('Agente '+name+' cadastrado!','s');loadTeamList();renderOpsTeamNow();}
+async function toggleAgent(id,s){await dbU('sos_team',id,{status:s==='available'?'busy':'available'});loadTeamList();renderOpsTeamNow();}
+async function deleteAgent(id){if(!confirm('Remover?'))return;await dbD('sos_team',id);loadTeamList();renderOpsTeamNow();toast('Removido.','w');}
+function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;const box=document.getElementById('chat-box');const div=document.createElement('div');div.className='chat-msg op';div.innerHTML=`<div class="chat-bubble">${msg}</div><div class="chat-time">Agora — ${user?.name||'Operador'}</div>`;box.appendChild(div);box.scrollTop=box.scrollHeight;inp.value='';}
+function qr(msg){document.getElementById('chat-inp').value=msg;sendChat();}
+async function renderReports(){await updateOpsStats();}
+window.addEventListener('load',init);
+</script>
+</body>
+</html>

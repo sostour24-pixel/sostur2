@@ -250,12 +250,23 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 .chat-time{font-size:11px;color:#94a3b8;margin-top:2px;padding:0 4px;}
 .chat-msg.op .chat-time{text-align:right;}
 
+/* BOTTOM NAV MOBILE */
+.mob-nav{display:none;}
+.mob-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 4px;border:none;background:none;font-size:10px;color:#64748b;cursor:pointer;font-family:'Inter',sans-serif;gap:3px;font-weight:500;}
+.mob-btn.on{color:#e11d48;font-weight:700;}
+.mob-icon{font-size:20px;line-height:1;}
+
 @media(max-width:800px){
   .layout{grid-template-columns:1fr;}.sidebar{display:none;}
   .grid-4{grid-template-columns:1fr 1fr;}
+  .grid-2{grid-template-columns:1fr;}
+  .content{padding:14px;padding-bottom:76px;}
+  .card{margin-bottom:10px;}
   .lp-hero{padding:52px 20px 44px;}.lp-nav{padding:0 20px;}
   .lp-sec,.lp-footer,.lp-divider{padding-left:20px;padding-right:20px;}
   .lp-steps,.lp-services,.lp-pricing,.lp-contact-grid,.lp-row{grid-template-columns:1fr;}
+  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f0;z-index:200;box-shadow:0 -2px 8px rgba(0,0,0,.07);}
+  .login-card{padding:24px 18px;}
 }
 </style>
 </head>
@@ -571,6 +582,12 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
       </div>
     </div>
   </div>
+  <nav class="mob-nav" id="ag-mob">
+    <button class="mob-btn on" id="mab-d" onclick="agPg('d',document.getElementById('sa-d'))"><span class="mob-icon">📊</span>Dashboard</button>
+    <button class="mob-btn" id="mab-n" onclick="agPg('n',document.getElementById('sa-n'))"><span class="mob-icon">🚨</span>Chamado</button>
+    <button class="mob-btn" id="mab-t" onclick="agPg('t',document.getElementById('sa-t'))"><span class="mob-icon">📋</span>Chamados</button>
+    <button class="mob-btn" id="mab-a" onclick="agPg('a',document.getElementById('sa-a'))"><span class="mob-icon">🏢</span>Agência</button>
+  </nav>
 </div>
 
 <!-- CENTRAL DE OPERAÇÕES -->
@@ -696,6 +713,12 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
       </div>
     </div>
   </div>
+  <nav class="mob-nav" id="ops-mob">
+    <button class="mob-btn on" id="mob-d" onclick="opsPg('d',document.getElementById('so-d'))"><span class="mob-icon">📊</span>Dashboard</button>
+    <button class="mob-btn" id="mob-o" onclick="opsPg('o',document.getElementById('so-o'))"><span class="mob-icon">🚨</span>Chamados</button>
+    <button class="mob-btn" id="mob-r" onclick="opsPg('r',document.getElementById('so-r'))"><span class="mob-icon">✅</span>Resolvidos</button>
+    <button class="mob-btn" id="mob-a" onclick="opsPg('a',document.getElementById('so-a'))"><span class="mob-icon">🏢</span>Agências</button>
+  </nav>
 </div>
 
 <script>
@@ -813,8 +836,8 @@ async function submitContact(){
   finally{btnLoad(btn,false);btn.textContent='Quero contratar o SOS Tur →';}
 }
 
-function agPg(p,btn){document.querySelectorAll('#v-agency .page').forEach(x=>x.classList.remove('on'));document.getElementById('ap-'+p).classList.add('on');document.querySelectorAll('#v-agency .sb-btn').forEach(b=>b.classList.remove('on-b','on-r','on-g'));btn.classList.add('on-b');}
-function opsPg(p,btn){document.querySelectorAll('#v-ops .page').forEach(x=>x.classList.remove('on'));document.getElementById('op-'+p).classList.add('on');document.querySelectorAll('#v-ops .sb-btn').forEach(b=>b.classList.remove('on-r','on-b','on-g'));btn.classList.add('on-r');if(p==='t')loadTeamList();if(p==='rep')renderReports();if(p==='o')filterT(tf,1);if(p==='r')loadOpsResolved(1);if(p==='aud')loadAuditLog();}
+function agPg(p,btn){document.querySelectorAll('#v-agency .page').forEach(x=>x.classList.remove('on'));document.getElementById('ap-'+p).classList.add('on');document.querySelectorAll('#v-agency .sb-btn').forEach(b=>b.classList.remove('on-b','on-r','on-g'));if(btn)btn.classList.add('on-b');document.querySelectorAll('#ag-mob .mob-btn').forEach(b=>b.classList.remove('on'));const mab=document.getElementById('mab-'+p);if(mab)mab.classList.add('on');}
+function opsPg(p,btn){document.querySelectorAll('#v-ops .page').forEach(x=>x.classList.remove('on'));document.getElementById('op-'+p).classList.add('on');document.querySelectorAll('#v-ops .sb-btn').forEach(b=>b.classList.remove('on-r','on-b','on-g'));if(btn)btn.classList.add('on-r');document.querySelectorAll('#ops-mob .mob-btn').forEach(b=>b.classList.remove('on'));const mob=document.getElementById('mob-'+p);if(mob)mob.classList.add('on');if(p==='t')loadTeamList();if(p==='rep')renderReports();if(p==='o')filterT(tf,1);if(p==='r')loadOpsResolved(1);if(p==='aud')loadAuditLog();}
 
 async function loadAgencyPortal(){
   if(!user)return;if(!agency)await loadAgencyUser();
@@ -1001,6 +1024,17 @@ function subscribeOps(){
 }
 
 window.addEventListener('load',init);
+
+// ── SERVICE WORKER ────────────────────────────
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
+window.addEventListener('offline',()=>toast('Sem conexão com a internet. Dados podem estar desatualizados.','w',8000));
+window.addEventListener('online',()=>toast('Conexão restaurada! ✅','s'));
+
+// ── MONITORAMENTO DE ERROS ────────────────────
+const SENTRY_DSN='__SENTRY_DSN__';
+if(SENTRY_DSN){const s=document.createElement('script');s.src='https://browser.sentry-cdn.com/7.119.2/bundle.min.js';s.crossOrigin='anonymous';s.onload=()=>{if(window.Sentry)Sentry.init({dsn:SENTRY_DSN,environment:'production',tracesSampleRate:0.1,ignoreErrors:['ResizeObserver loop','Non-Error promise rejection']});};document.head.appendChild(s);}
+window.addEventListener('error',e=>{if(window.Sentry&&SENTRY_DSN)Sentry.captureException(e.error);console.error('[SOS Tur]',e.message,e.filename+':'+e.lineno);});
+window.addEventListener('unhandledrejection',e=>{if(window.Sentry&&SENTRY_DSN)Sentry.captureException(e.reason);console.error('[SOS Tur Promise]',e.reason);});
 </script>
 </body>
 </html>

@@ -100,6 +100,14 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 .tbl tr:last-child td{border:none;}
 .tbl td+td,.tbl th+th{padding-left:12px;}
 
+/* SLA BAR */
+.sla-bar{height:4px;border-radius:4px;background:#e2e8f0;margin-top:6px;overflow:hidden;}
+.sla-fill{height:100%;border-radius:4px;transition:width .3s;}
+.sla-txt{font-size:11px;margin-top:2px;}
+
+/* PAGINATION */
+.pg-nav{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding-top:12px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+
 /* AGENT ROW */
 .agent-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #f1f5f9;}
 .agent-row:last-child{border:none;}
@@ -594,6 +602,7 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
       <button class="sb-btn" id="so-a" onclick="opsPg('a',this)">🏢 Agências <span class="sb-count cnt-g" id="so-agcnt">0</span></button>
       <button class="sb-btn" id="so-t" onclick="opsPg('t',this)">👥 Equipe</button>
       <button class="sb-btn" id="so-rep" onclick="opsPg('rep',this)">📈 Relatórios</button>
+      <button class="sb-btn" id="so-aud" onclick="opsPg('aud',this)">🗒️ Auditoria</button>
     </aside>
     <div class="content">
       <div class="page on" id="op-d">
@@ -667,6 +676,10 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
           </div>
         </div>
       </div>
+      <div class="page" id="op-aud">
+        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Log de auditoria</div>
+        <div class="card"><div id="audit-list"><div class="empty" style="color:#94a3b8;">Carregando...</div></div></div>
+      </div>
       <div class="page" id="op-rep">
         <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Relatórios</div>
         <div class="grid-2">
@@ -689,6 +702,8 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 const SUPABASE_URL='__SUPABASE_URL__';
 const SUPABASE_KEY='__SUPABASE_KEY__';
 let db=null,user=null,agency=null,tf='all',ltab='agency';
+const PER_PAGE=15;
+let opsTicketPage=1,agTicketPage=1,resTicketPage=1;
 
 async function init(){
   try{db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);await loadDefaultTeam();}catch(e){console.warn(e.message);}
@@ -756,10 +771,24 @@ async function loadAgencyUser(){
     agency=ags.find(a=>a.email===user.email)||ags[ags.length-1]||null;
   }catch(e){}
 }
-function startClocks(){function tick(){const t=new Date().toLocaleTimeString('pt-BR');['lp-clock','sy-clock-ag','sy-clock-ops','ops-time'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});}setInterval(tick,1000);tick();}
+function startClocks(){function tick(){const t=new Date().toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo'});['lp-clock','sy-clock-ag','sy-clock-ops','ops-time'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t;});}setInterval(tick,1000);tick();}
 function toast(msg,type='s',dur=3500){const w=document.getElementById('toast-wrap');const el=document.createElement('div');el.className='toast '+type;el.textContent=msg;w.appendChild(el);setTimeout(()=>el.remove(),dur);}
 const cur=n=>'R$ '+Math.round(n||0).toLocaleString('pt-BR');
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function fmtDate(d){return d?new Date(d).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';}
+function slaBar(t){
+  if(t.status!=='open')return '';
+  const elapsed=Math.round((Date.now()-new Date(t.created_at).getTime())/60000);
+  const sla=t.sla_minutes||20;
+  const pct=Math.min(100,Math.round(elapsed/sla*100));
+  const color=pct>=100?'#e11d48':pct>=75?'#d97706':'#16a34a';
+  return `<div class="sla-bar"><div class="sla-fill" style="width:${pct}%;background:${color};"></div></div><div class="sla-txt" style="color:${pct>=100?'#e11d48':'#94a3b8'};">${pct>=100?'⚠ SLA estourado — '+elapsed+' min':'SLA: '+elapsed+'/'+sla+' min'}</div>`;
+}
+function renderPagination(page,total,perPage,prevFn,nextFn){
+  const totalPages=Math.ceil(total/perPage)||1;
+  if(totalPages<=1&&total<=perPage)return '';
+  return `<div class="pg-nav"><span>${page} de ${totalPages} (${total} registros)</span><button class="btn" onclick="${prevFn}()" ${page<=1?'disabled':''} style="font-size:12px;padding:5px 10px;">← Ant.</button><button class="btn" onclick="${nextFn}()" ${page>=totalPages?'disabled':''} style="font-size:12px;padding:5px 10px;">Próx. →</button></div>`;
+}
 async function dbQ(tbl,f={}){if(!db)return[];try{let q=db.from(tbl).select('*');Object.entries(f).forEach(([k,v])=>q=q.eq(k,v));const {data}=await q.order('created_at',{ascending:false});return data||[];}catch(e){return[];}}
 async function dbI(tbl,row){if(!db)throw new Error('Sem conexão com o banco');const{data,error}=await db.from(tbl).insert(row).select().single();if(error)throw error;return data;}
 async function dbU(tbl,id,upd){if(!db)throw new Error('Sem conexão com o banco');const{error}=await db.from(tbl).update(upd).eq('id',id);if(error)throw error;}
@@ -785,7 +814,7 @@ async function submitContact(){
 }
 
 function agPg(p,btn){document.querySelectorAll('#v-agency .page').forEach(x=>x.classList.remove('on'));document.getElementById('ap-'+p).classList.add('on');document.querySelectorAll('#v-agency .sb-btn').forEach(b=>b.classList.remove('on-b','on-r','on-g'));btn.classList.add('on-b');}
-function opsPg(p,btn){document.querySelectorAll('#v-ops .page').forEach(x=>x.classList.remove('on'));document.getElementById('op-'+p).classList.add('on');document.querySelectorAll('#v-ops .sb-btn').forEach(b=>b.classList.remove('on-r','on-b','on-g'));btn.classList.add('on-r');if(p==='t')loadTeamList();if(p==='rep')renderReports();if(p==='o')filterT(tf);}
+function opsPg(p,btn){document.querySelectorAll('#v-ops .page').forEach(x=>x.classList.remove('on'));document.getElementById('op-'+p).classList.add('on');document.querySelectorAll('#v-ops .sb-btn').forEach(b=>b.classList.remove('on-r','on-b','on-g'));btn.classList.add('on-r');if(p==='t')loadTeamList();if(p==='rep')renderReports();if(p==='o')filterT(tf,1);if(p==='r')loadOpsResolved(1);if(p==='aud')loadAuditLog();}
 
 async function loadAgencyPortal(){
   if(!user)return;if(!agency)await loadAgencyUser();
@@ -795,16 +824,38 @@ async function loadAgencyPortal(){
   if(agency){s('ag-sb-pl',agency.plan);s('ag-welcome','Olá, '+agency.name+' 👋');s('ag-plan','Plano '+agency.plan+' — '+cur(agency.price)+'/mês — Ativo');}
   else{s('ag-welcome','Olá, '+user.name+' 👋');s('ag-plan','Entre em contato para ativar seu acesso completo.');}
   const skel='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';
-  const rec=document.getElementById('ag-recent');if(rec)rec.innerHTML=skel;
-  const tl=document.getElementById('ag-tlist');if(tl)tl.innerHTML=skel;
+  const recEl=document.getElementById('ag-recent');if(recEl)recEl.innerHTML=skel;
   const tks=agency?await dbQ('sos_tickets',{agency_id:agency.id}):[];
   const open=tks.filter(t=>t.status==='open').length;
   const res=tks.filter(t=>t.status==='resolved').length;
   s('ag-tot',tks.length);s('ag-op',open);s('ag-res',res);s('ag-sla',res>0?'< 8 min':'—');s('sa-cnt',open);
-  const rec=document.getElementById('ag-recent');if(rec)rec.innerHTML=tks.length?tks.slice(0,3).map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado ainda.</div>';
-  const tl=document.getElementById('ag-tlist');if(tl)tl.innerHTML=tks.length?tks.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado ainda.</div>';
+  if(recEl)recEl.innerHTML=tks.length?tks.slice(0,3).map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado ainda.</div>';
+  loadAgencyTickets(1);
   renderAgCard();
 }
+async function loadAgencyTickets(page){
+  agTicketPage=page||1;
+  if(!db||!agency)return;
+  const tlEl=document.getElementById('ag-tlist');if(!tlEl)return;
+  tlEl.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';
+  const from=(agTicketPage-1)*PER_PAGE,to=from+PER_PAGE-1;
+  const{data,count}=await db.from('sos_tickets').select('*',{count:'exact'}).eq('agency_id',agency.id).order('created_at',{ascending:false}).range(from,to);
+  const tks=data||[];
+  tlEl.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado ainda.</div>')+renderPagination(agTicketPage,count||0,PER_PAGE,'agTicketPrev','agTicketNext');
+}
+function agTicketPrev(){loadAgencyTickets(agTicketPage-1);}
+function agTicketNext(){loadAgencyTickets(agTicketPage+1);}
+async function loadOpsResolved(page){
+  resTicketPage=page||1;if(!db)return;
+  const el=document.getElementById('ops-rlist');if(!el)return;
+  el.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';
+  const from=(resTicketPage-1)*PER_PAGE,to=from+PER_PAGE-1;
+  const{data,count}=await db.from('sos_tickets').select('*',{count:'exact'}).eq('status','resolved').order('resolved_at',{ascending:false}).range(from,to);
+  const tks=data||[];
+  el.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum resolvido ainda.</div>')+renderPagination(resTicketPage,count||0,PER_PAGE,'resTicketPrev','resTicketNext');
+}
+function resTicketPrev(){loadOpsResolved(resTicketPage-1);}
+function resTicketNext(){loadOpsResolved(resTicketPage+1);}
 function renderAgCard(){
   const el=document.getElementById('ag-card');if(!el)return;
   if(!agency){el.innerHTML='<div class="empty">Agência não encontrada.<br>Entre em contato com a equipe SOS Tur.</div>';return;}
@@ -825,8 +876,9 @@ async function submitTicket(){
   const num='SOS-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+String(Date.now()).slice(-4);
   const sla=priority==='P1'?8:priority==='P2'?20:60;
   try{
-    await dbI('sos_tickets',{num,type,priority,pax,npax,flight,location,description:desc,pax_phone:paxPhone,my_phone:myPhone,agency_id:agency.id,agency_name:agency.name,status:'open',sla_minutes:sla,assigned_to:null});
+    const newTicket=await dbI('sos_tickets',{num,type,priority,pax,npax,flight,location,description:desc,pax_phone:paxPhone,my_phone:myPhone,agency_id:agency.id,agency_name:agency.name,status:'open',sla_minutes:sla,assigned_to:null});
     await dbU('sos_agencies',agency.id,{tickets:(agency.tickets||0)+1});agency.tickets=(agency.tickets||0)+1;
+    await logAudit('open','ticket',newTicket?.id||'',num,'Aberto por '+agency.name+' · '+type+' · '+priority);
     ['nc-px','nc-npx','nc-fl','nc-loc','nc-desc','nc-pp','nc-mp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     toast('Chamado '+num+' aberto! Equipe acionada.','s');loadAgencyPortal();agPg('t',document.getElementById('sa-t'));
   }catch(e){toast('Erro ao abrir chamado: '+(e.message||'Tente novamente.'),'e');}
@@ -843,19 +895,21 @@ async function updateOpsStats(){
   s('so-cnt',open.length);s('so-agcnt',ags.length);
   const p1=open.filter(t=>t.priority==='P1');s('p1-b',p1.length+' P1');
   const crit=document.getElementById('ops-crit');if(crit)crit.innerHTML=p1.length?p1.map(t=>ticketHTML(t,true)).join(''):'<div class="empty" style="padding:16px;">Nenhum chamado crítico ✅</div>';
-  filterT(tf);
-  const rl=document.getElementById('ops-rlist');if(rl)rl.innerHTML=res.length?res.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum resolvido.</div>';
+  open.forEach(t=>{const elapsed=Math.round((Date.now()-new Date(t.created_at).getTime())/60000);if(elapsed>=(t.sla_minutes||20)&&!sessionStorage.getItem('sla-alerted-'+t.id)){sessionStorage.setItem('sla-alerted-'+t.id,'1');toast('⚠ SLA ESTOURADO: Chamado '+t.num+' ('+t.agency_name+') — '+elapsed+' min','e',12000);}});
+  filterT(tf,opsTicketPage);
   renderOpsAgencies(ags);
   s('rep-ag',ags.length);const mrr=ags.reduce((s,a)=>s+(a.price||0),0);s('rep-mrr',cur(mrr)+'/mês');s('rep-avg',ags.length?cur(mrr/ags.length):cur(0));s('rep-calls',tks.length);s('rep-rate',rate);
   const byType={};tks.forEach(t=>{byType[t.type]=(byType[t.type]||0)+1;});
   const rt=document.getElementById('rep-types');if(rt)rt.innerHTML=Object.keys(byType).length?Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="stat-row"><span style="color:#64748b;">${esc(k)}</span><span style="font-weight:700;">${v}</span></div>`).join(''):'<div class="empty" style="padding:16px;">Sem dados.</div>';
 }
-async function filterT(f){tf=f;const tks=await dbQ('sos_tickets');const open=tks.filter(t=>t.status==='open');const filt=f==='all'?open:open.filter(t=>t.priority===f);const el=document.getElementById('ops-olist');if(el)el.innerHTML=filt.length?filt.map(t=>ticketHTML(t,true)).join(''):'<div class="empty">Nenhum chamado.</div>';}
-async function assignTicket(id,btn){if(btn)btnLoad(btn,true);try{const team=await dbQ('sos_team');const av=team.find(a=>a.status==='available');const name=av?av.name:(user?.name||'Agente');await dbU('sos_tickets',id,{assigned_to:name});if(av)await dbU('sos_team',av.id,{status:'busy'});toast('Assumido por '+name,'i');updateOpsStats();renderOpsTeamNow();}catch(e){toast('Erro ao assumir chamado.','e');}finally{if(btn){btnLoad(btn,false);btn.textContent='Assumir';}}}
-async function resolveTicket(id,btn){if(btn)btnLoad(btn,true);try{await dbU('sos_tickets',id,{status:'resolved',resolved_at:new Date().toISOString()});toast('Chamado resolvido! ✅','s');updateOpsStats();}catch(e){toast('Erro ao resolver chamado.','e');}finally{if(btn){btnLoad(btn,false);btn.textContent='Resolver';}}}
+async function filterT(f,page){tf=f;opsTicketPage=page||1;if(!db)return;const el=document.getElementById('ops-olist');if(!el)return;el.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';const from=(opsTicketPage-1)*PER_PAGE,to=from+PER_PAGE-1;let q=db.from('sos_tickets').select('*',{count:'exact'}).eq('status','open').order('priority',{ascending:true}).order('created_at',{ascending:false}).range(from,to);if(f!=='all')q=q.eq('priority',f);const{data,count}=await q;const tks=data||[];el.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,true)).join(''):'<div class="empty">Nenhum chamado aberto.</div>')+renderPagination(opsTicketPage,count||0,PER_PAGE,'opsTktPrev','opsTktNext');}
+function opsTktPrev(){filterT(tf,opsTicketPage-1);}
+function opsTktNext(){filterT(tf,opsTicketPage+1);}
+async function assignTicket(id,btn){if(btn)btnLoad(btn,true);try{const team=await dbQ('sos_team');const av=team.find(a=>a.status==='available');const name=av?av.name:(user?.name||'Agente');await dbU('sos_tickets',id,{assigned_to:name});if(av)await dbU('sos_team',av.id,{status:'busy'});await logAudit('assign','ticket',id,id,'Assumido por '+name);toast('Assumido por '+name,'i');updateOpsStats();renderOpsTeamNow();}catch(e){toast('Erro ao assumir chamado.','e');}finally{if(btn){btnLoad(btn,false);btn.textContent='Assumir';}}}
+async function resolveTicket(id,btn){if(btn)btnLoad(btn,true);try{await dbU('sos_tickets',id,{status:'resolved',resolved_at:new Date().toISOString()});await logAudit('resolve','ticket',id,id,'Resolvido por '+( user?.name||'Operador'));toast('Chamado resolvido! ✅','s');updateOpsStats();}catch(e){toast('Erro ao resolver chamado.','e');}finally{if(btn){btnLoad(btn,false);btn.textContent='Resolver';}}}
 function renderOpsAgencies(ags){const el=document.getElementById('ops-aglist');if(!el)return;if(!ags.length){el.innerHTML='<div class="empty">Nenhuma agência.</div>';return;}el.innerHTML=`<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Agência</th><th>Plano</th><th>Cidade</th><th>Valor/mês</th><th>Chamados</th><th>Status</th><th></th></tr></thead><tbody>${ags.map(ag=>`<tr><td><div style="font-weight:700;">${esc(ag.name)}</div><div style="font-size:12px;color:#64748b;">${esc(ag.resp)}</div></td><td><span class="badge bdg-r">${esc(ag.plan)}</span></td><td>${esc(ag.city)}</td><td style="font-weight:700;color:#16a34a;">${cur(ag.price)}</td><td>${ag.tickets||0}</td><td><span class="badge ${ag.status==='lead'?'bdg-a':'bdg-g'}">${ag.status==='lead'?'Lead':'Ativo'}</span></td><td><button class="btn" onclick="removeAg(${JSON.stringify(ag.id)},${JSON.stringify(ag.name)})" style="font-size:11px;padding:3px 8px;color:#e11d48;">✕</button></td></tr>`).join('')}</tbody></table></div>`;}
-async function removeAg(id,name){if(!confirm('Remover "'+name+'"?'))return;try{await dbD('sos_agencies',id);toast('Removida.','w');updateOpsStats();}catch(e){toast('Erro ao remover: '+(e.message||'Tente novamente.'),'e');}}
-function ticketHTML(t,ops){const pc=t.priority==='P1'?'p1':t.priority==='P2'?'p2':'p3';const sc=t.status==='resolved'?'done':pc;const bc=t.priority==='P1'?'bdg-r':t.priority==='P2'?'bdg-a':'bdg-g';return `<div class="ticket ${sc}"><div class="t-hd"><span class="t-num">#${esc(t.num)}</span><span class="badge ${bc}">${esc(t.priority)}</span><span class="badge ${t.status==='open'?'bdg-r':'bdg-g'}">${t.status==='open'?'Em aberto':'Resolvido'}</span>${t.assigned_to?`<span class="badge bdg-b">Agente: ${esc(t.assigned_to)}</span>`:''}<span style="margin-left:auto;font-size:11px;color:#94a3b8;">${new Date(t.created_at).toLocaleString('pt-BR')}</span></div><div class="t-title">${esc(t.type)}</div><div class="t-meta"><strong>${esc(t.agency_name)}</strong> · ${esc(t.npax)} pax · ${esc(t.flight)}</div><div class="t-desc">${esc(t.description)}${t.location?' — '+esc(t.location):''}</div>${t.resolved_at?`<div style="font-size:12px;color:#16a34a;margin-bottom:8px;">✅ Resolvido: ${new Date(t.resolved_at).toLocaleString('pt-BR')}</div>`:''}<div class="t-actions">${ops&&t.status==='open'?`<button class="btn btn-blue" onclick="assignTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Assumir</button><button class="btn btn-green" onclick="resolveTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Resolver</button><button class="btn" onclick="opsPg('c',document.getElementById('so-c'))" style="font-size:12px;padding:6px 11px;">Chat</button>`:''} ${!ops&&t.status==='open'?`<span class="badge bdg-a">Aguardando equipe SOS Tur</span>`:''} ${t.status==='resolved'?`<span class="badge bdg-g">Encerrado</span>`:''}</div></div>`;}
+async function removeAg(id,name){if(!confirm('Remover "'+name+'"?'))return;try{await logAudit('delete','agency',id,name,'Removida por '+(user?.name||'Operador'));await dbD('sos_agencies',id);toast('Removida.','w');updateOpsStats();}catch(e){toast('Erro ao remover: '+(e.message||'Tente novamente.'),'e');}}
+function ticketHTML(t,ops){const pc=t.priority==='P1'?'p1':t.priority==='P2'?'p2':'p3';const sc=t.status==='resolved'?'done':pc;const bc=t.priority==='P1'?'bdg-r':t.priority==='P2'?'bdg-a':'bdg-g';return `<div class="ticket ${sc}"><div class="t-hd"><span class="t-num">#${esc(t.num)}</span><span class="badge ${bc}">${esc(t.priority)}</span><span class="badge ${t.status==='open'?'bdg-r':'bdg-g'}">${t.status==='open'?'Em aberto':'Resolvido'}</span>${t.assigned_to?`<span class="badge bdg-b">Agente: ${esc(t.assigned_to)}</span>`:''}<span style="margin-left:auto;font-size:11px;color:#94a3b8;">${fmtDate(t.created_at)}</span></div><div class="t-title">${esc(t.type)}</div><div class="t-meta"><strong>${esc(t.agency_name)}</strong> · ${esc(t.npax)} pax · ${esc(t.flight)}</div><div class="t-desc">${esc(t.description)}${t.location?' — '+esc(t.location):''}</div>${slaBar(t)}${t.resolved_at?`<div style="font-size:12px;color:#16a34a;margin:6px 0;">✅ Resolvido: ${fmtDate(t.resolved_at)}</div>`:''}<div class="t-actions">${ops&&t.status==='open'?`<button class="btn btn-blue" onclick="assignTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Assumir</button><button class="btn btn-green" onclick="resolveTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Resolver</button><button class="btn" onclick="opsPg('c',document.getElementById('so-c'))" style="font-size:12px;padding:6px 11px;">Chat</button>`:''} ${!ops&&t.status==='open'?`<span class="badge bdg-a">Aguardando equipe SOS Tur</span>`:''} ${t.status==='resolved'?`<span class="badge bdg-g">Encerrado</span>`:''}</div></div>`;}
 
 async function loadDefaultTeam(){if(!db)return;try{const ex=await dbQ('sos_team');if(ex.length>0)return;const defs=[{name:'Renata Ferreira',wpp:'(11)99001-0001',shift:'Madrugada (00h–08h)',spec:'Geral',status:'available'},{name:'Marcos Oliveira',wpp:'(11)99001-0002',shift:'Manhã (08h–16h)',spec:'Voos e conexões',status:'available'},{name:'Julia Santos',wpp:'(11)99001-0003',shift:'Tarde/Noite (16h–00h)',spec:'Hotéis',status:'available'}];for(const d of defs)await dbI('sos_team',d);}catch(e){console.warn('loadDefaultTeam:',e.message);}}
 async function renderOpsTeamNow(){const team=await dbQ('sos_team');const el=document.getElementById('ops-team-now');if(!el)return;el.innerHTML=team.slice(0,4).map(a=>`<div class="agent-row"><div class="a-av" style="background:${a.status==='available'?'#16a34a':'#d97706'};">${esc(a.name.split(' ').map(w=>w[0]).join('').slice(0,2))}</div><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${esc(a.name)}</div><div style="font-size:12px;color:#64748b;">${esc(a.shift)}</div></div><span class="badge ${a.status==='available'?'bdg-g':'bdg-a'}">${a.status==='available'?'Disponível':'Ocupado'}</span></div>`).join('');}
@@ -885,6 +939,21 @@ async function sendReset(){
   if(error){errEl.textContent='Erro: '+error.message;errEl.style.display='block';return;}
   toast('✅ Link enviado! Verifique seu e-mail.','s',7000);
   showForgot(false);document.getElementById('forgot-email').value='';
+}
+
+// ── AUDITORIA ────────────────────────────────
+async function logAudit(action,entity,entityId,entityRef,details){
+  if(!db||!user)return;
+  try{await db.from('sos_audit_log').insert({action,entity,entity_id:entityId,entity_ref:entityRef,details,user_email:user.email,user_name:user.name});}catch(e){}
+}
+async function loadAuditLog(){
+  const el=document.getElementById('audit-list');if(!el)return;
+  el.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';
+  if(!db){el.innerHTML='<div class="empty">Sem conexão com o banco.</div>';return;}
+  const{data}=await db.from('sos_audit_log').select('*').order('created_at',{ascending:false}).limit(200);
+  const logs=data||[];
+  if(!logs.length){el.innerHTML='<div class="empty">Nenhum registro de auditoria.</div>';return;}
+  el.innerHTML=`<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Data/Hora</th><th>Usuário</th><th>Ação</th><th>Entidade</th><th>Detalhes</th></tr></thead><tbody>${logs.map(l=>`<tr><td style="white-space:nowrap;color:#64748b;">${fmtDate(l.created_at)}</td><td>${esc(l.user_name||l.user_email||'—')}</td><td><span class="badge ${l.action==='resolve'?'bdg-g':l.action==='assign'?'bdg-b':l.action==='delete'?'bdg-r':'bdg-gray'}">${esc(l.action)}</span></td><td style="font-size:12px;">${esc(l.entity_ref||l.entity||'—')}</td><td style="color:#64748b;font-size:12px;">${esc(l.details||'—')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // ── NOTIFICAÇÕES REALTIME ─────────────────────
@@ -918,13 +987,17 @@ function subscribeAgency(agencyId){
 function subscribeOps(){
   if(!db)return;
   if(chOps)db.removeChannel(chOps);
-  chOps=db.channel('ops-new')
+  chOps=db.channel('ops-all')
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'sos_tickets'},(p)=>{
       const t=p.new;
       toast((t.priority==='P1'?'🚨 URGENTE — ':'📋 Novo chamado ')+'['+t.priority+'] '+t.num+' · '+t.agency_name,t.priority==='P1'?'e':'w',9000);
       if(t.priority==='P1')playNotif();
       updateOpsStats();
-    }).subscribe();
+    })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'sos_tickets'},(p)=>{
+      updateOpsStats();
+    })
+    .subscribe();
 }
 
 window.addEventListener('load',init);

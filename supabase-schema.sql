@@ -197,6 +197,34 @@ create policy "usuario ve proprio perfil"
   on public.sos_users for select
   using (email = (auth.jwt() ->> 'email'));
 
+-- LOG DE AUDITORIA
+create table if not exists public.sos_audit_log (
+  id          uuid primary key default gen_random_uuid(),
+  action      text not null,
+  entity      text not null,
+  entity_id   text,
+  entity_ref  text,
+  details     text,
+  user_email  text,
+  user_name   text,
+  created_at  timestamptz default now()
+);
+
+create index if not exists idx_audit_created on public.sos_audit_log(created_at desc);
+create index if not exists idx_audit_entity  on public.sos_audit_log(entity,entity_id);
+
+alter table public.sos_audit_log enable row level security;
+
+-- Apenas ops lê e inserção é feita por usuários autenticados
+create policy "ops le auditoria"
+  on public.sos_audit_log for select
+  using (public.get_my_role() = 'ops');
+
+create policy "auth insere auditoria"
+  on public.sos_audit_log for insert
+  to authenticated
+  with check (user_email = (auth.jwt() ->> 'email'));
+
 -- ── USUÁRIOS DE DEMONSTRAÇÃO ──────────────────
 -- Para criar via Supabase: Authentication > Users > Add user
 -- Email: agencia@demo.com / Senha: defina no painel do Supabase Auth

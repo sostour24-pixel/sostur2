@@ -109,6 +109,32 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 .search-bar{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px 9px 36px;font-size:13px;font-family:'Inter',sans-serif;outline:none;background:#f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E") no-repeat 10px center;margin-bottom:14px;}
 .search-bar:focus{border-color:#e11d48;background-color:#fff;}
 
+/* TIMELINE */
+.tl-line{position:relative;padding-left:22px;border-left:2px solid #e2e8f0;}
+.tl-dot{position:absolute;left:-6px;top:3px;width:10px;height:10px;border-radius:50%;border:2px solid #fff;}
+.tl-item{margin-bottom:18px;}
+.tl-action{font-weight:700;font-size:13px;}
+.tl-detail{font-size:12px;color:#64748b;margin-top:2px;}
+.tl-time{font-size:11px;color:#94a3b8;margin-top:2px;}
+
+/* MODAL OVERLAY */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-box{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:480px;max-height:82vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.2);}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.modal-close{border:none;background:none;font-size:20px;cursor:pointer;color:#94a3b8;padding:0;}
+
+/* PRINT */
+@media print{
+  .sidebar,.topbar,.mob-nav,.t-actions,.pg-nav,.toast-wrap,.search-bar,#export-btn,.btn{display:none!important;}
+  .layout{display:block;}
+  .content{padding:0;}
+  .view:not(.active){display:none!important;}
+  .page:not(.on){display:none!important;}
+  .card{break-inside:avoid;box-shadow:none;border:1px solid #ccc;}
+  .ticket{break-inside:avoid;}
+  .grid-2,.grid-4{grid-template-columns:1fr 1fr;}
+}
+
 /* SHORTCUTS MODAL */
 .sh-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,.18);z-index:9999;min-width:260px;max-width:320px;}
 .sh-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;}
@@ -736,9 +762,12 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
       <div class="page" id="op-rep">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
           <div style="font-size:21px;font-weight:800;">Relatórios</div>
-          <button id="export-btn" class="btn btn-blue" onclick="exportCSV()" style="font-size:13px;">⬇ Exportar CSV</button>
+          <div style="display:flex;gap:7px;">
+            <button class="btn" onclick="window.print()" style="font-size:13px;">🖨 Imprimir</button>
+            <button id="export-btn" class="btn btn-blue" onclick="exportCSV()" style="font-size:13px;">⬇ Exportar CSV</button>
+          </div>
         </div>
-        <div class="grid-2">
+        <div class="grid-2" style="margin-bottom:14px;">
           <div class="card">
             <div class="card-title">Resumo financeiro</div>
             <div class="stat-row"><span style="color:#64748b;">Agências ativas</span><span style="font-weight:700;" id="rep-ag">0</span></div>
@@ -747,7 +776,19 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
             <div class="stat-row"><span style="color:#64748b;">Total chamados</span><span style="font-weight:700;" id="rep-calls">0</span></div>
             <div class="stat-row"><span style="color:#64748b;">Taxa de resolução</span><span style="font-weight:700;color:#16a34a;" id="rep-rate">—</span></div>
           </div>
-          <div class="card"><div class="card-title">Por tipo</div><div id="rep-types"><div class="empty" style="padding:20px;">Sem dados ainda.</div></div></div>
+          <div class="card">
+            <div class="card-title">Chamados por tipo</div>
+            <div id="rep-types"><div class="empty" style="padding:20px;">Sem dados ainda.</div></div>
+            <canvas id="chart-type" style="max-height:180px;margin-top:12px;display:none;"></canvas>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:14px;">
+          <div class="card-title">Chamados por dia — últimos 14 dias</div>
+          <canvas id="chart-days" height="75"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Métricas por agência</div>
+          <div id="rep-agencies"><div class="empty" style="color:#94a3b8;">Carregando...</div></div>
         </div>
       </div>
     </div>
@@ -768,6 +809,7 @@ const PER_PAGE=15;
 let opsTicketPage=1,agTicketPage=1,resTicketPage=1;
 let opsSearchQ='',opsResSearchQ='',agSearchQ='';
 let opsSearchTimer=null,opsResSearchTimer=null,agSearchTimer=null;
+let lastTks=[],lastAgs=[];
 let activeChatTicket=null,chChat=null;
 let activeAgChatTicket=null,chAgChat=null;
 
@@ -820,6 +862,7 @@ async function finish(){
   setUserUI();
   if(user.role==='ops'){show('ops');loadOps();subscribeOps();toast('Bem-vindo, '+user.name+'!','s');}
   else{await loadAgencyUser();show('agency');loadAgencyPortal();if(agency?.id)subscribeAgency(agency.id);toast('Bem-vindo, '+user.name+'!','s');}
+  setTimeout(checkOnboarding,800);
 }
 function setUserUI(){
   if(!user)return;
@@ -958,6 +1001,7 @@ async function submitTicket(){
 async function loadOps(){await updateOpsStats();renderOpsTeamNow();}
 async function updateOpsStats(){
   const [tks,ags]=await Promise.all([dbQ('sos_tickets'),dbQ('sos_agencies')]);
+  lastTks=tks;lastAgs=ags;
   const open=tks.filter(t=>t.status==='open');const res=tks.filter(t=>t.status==='resolved');
   const rate=tks.length?Math.round(res.length/tks.length*100)+'%':'—';
   const s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -982,7 +1026,7 @@ async function assignTicket(id,btn){if(btn)btnLoad(btn,true);try{const team=awai
 async function resolveTicket(id,btn){if(btn)btnLoad(btn,true);try{await dbU('sos_tickets',id,{status:'resolved',resolved_at:new Date().toISOString()});await logAudit('resolve','ticket',id,id,'Resolvido por '+( user?.name||'Operador'));toast('Chamado resolvido! ✅','s');updateOpsStats();}catch(e){toast('Erro ao resolver chamado.','e');}finally{if(btn){btnLoad(btn,false);btn.textContent='Resolver';}}}
 function renderOpsAgencies(ags){const el=document.getElementById('ops-aglist');if(!el)return;if(!ags.length){el.innerHTML='<div class="empty">Nenhuma agência.</div>';return;}el.innerHTML=`<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Agência</th><th>Plano</th><th>Cidade</th><th>Valor/mês</th><th>Chamados</th><th>Status</th><th></th></tr></thead><tbody>${ags.map(ag=>`<tr><td><div style="font-weight:700;">${esc(ag.name)}</div><div style="font-size:12px;color:#64748b;">${esc(ag.resp)}</div></td><td><span class="badge bdg-r">${esc(ag.plan)}</span></td><td>${esc(ag.city)}</td><td style="font-weight:700;color:#16a34a;">${cur(ag.price)}</td><td>${ag.tickets||0}</td><td><span class="badge ${ag.status==='lead'?'bdg-a':'bdg-g'}">${ag.status==='lead'?'Lead':'Ativo'}</span></td><td><button class="btn" onclick="removeAg(${JSON.stringify(ag.id)},${JSON.stringify(ag.name)})" style="font-size:11px;padding:3px 8px;color:#e11d48;">✕</button></td></tr>`).join('')}</tbody></table></div>`;}
 async function removeAg(id,name){if(!confirm('Remover "'+name+'"?'))return;try{await logAudit('delete','agency',id,name,'Removida por '+(user?.name||'Operador'));await dbD('sos_agencies',id);toast('Removida.','w');updateOpsStats();}catch(e){toast('Erro ao remover: '+(e.message||'Tente novamente.'),'e');}}
-function ticketHTML(t,ops){const pc=t.priority==='P1'?'p1':t.priority==='P2'?'p2':'p3';const sc=t.status==='resolved'?'done':pc;const bc=t.priority==='P1'?'bdg-r':t.priority==='P2'?'bdg-a':'bdg-g';return `<div class="ticket ${sc}"><div class="t-hd"><span class="t-num">#${esc(t.num)}</span><span class="badge ${bc}">${esc(t.priority)}</span><span class="badge ${t.status==='open'?'bdg-r':'bdg-g'}">${t.status==='open'?'Em aberto':'Resolvido'}</span>${t.assigned_to?`<span class="badge bdg-b">Agente: ${esc(t.assigned_to)}</span>`:''}<span style="margin-left:auto;font-size:11px;color:#94a3b8;">${fmtDate(t.created_at)}</span></div><div class="t-title">${esc(t.type)}</div><div class="t-meta"><strong>${esc(t.agency_name)}</strong> · ${esc(t.npax)} pax · ${esc(t.flight)}</div><div class="t-desc">${esc(t.description)}${t.location?' — '+esc(t.location):''}</div>${slaBar(t)}${t.resolved_at?`<div style="font-size:12px;color:#16a34a;margin:6px 0;">✅ Resolvido: ${fmtDate(t.resolved_at)}</div>`:''}${csatHTML(t,ops)}${ops?notesHTML(t):''}<div class="t-actions" style="margin-top:8px;">${ops&&t.status==='open'?`<button class="btn btn-blue" onclick="assignTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Assumir</button><button class="btn btn-green" onclick="resolveTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Resolver</button><button class="btn" onclick="opsPg('c',document.getElementById('so-c'));setTimeout(()=>selectChatTicket('${t.id}'),300)" style="font-size:12px;padding:6px 11px;">💬 Chat</button>`:''} ${!ops&&t.status==='open'?`<span class="badge bdg-a">Aguardando equipe SOS Tur</span><button class="btn" onclick="agPg('c',document.getElementById('sa-c'));setTimeout(()=>selectAgChat('${t.id}','${esc(t.num)}'),300)" style="font-size:12px;padding:5px 10px;margin-left:4px;">💬 Chat</button>`:''} ${t.status==='resolved'?`<span class="badge bdg-g">Encerrado</span>`:''}</div></div>`;}
+function ticketHTML(t,ops){const pc=t.priority==='P1'?'p1':t.priority==='P2'?'p2':'p3';const sc=t.status==='resolved'?'done':pc;const bc=t.priority==='P1'?'bdg-r':t.priority==='P2'?'bdg-a':'bdg-g';return `<div class="ticket ${sc}"><div class="t-hd"><span class="t-num">#${esc(t.num)}</span><span class="badge ${bc}">${esc(t.priority)}</span><span class="badge ${t.status==='open'?'bdg-r':'bdg-g'}">${t.status==='open'?'Em aberto':'Resolvido'}</span>${t.assigned_to?`<span class="badge bdg-b">Agente: ${esc(t.assigned_to)}</span>`:''}<span style="margin-left:auto;font-size:11px;color:#94a3b8;">${fmtDate(t.created_at)}</span></div><div class="t-title">${esc(t.type)}</div><div class="t-meta"><strong>${esc(t.agency_name)}</strong> · ${esc(t.npax)} pax · ${esc(t.flight)}</div><div class="t-desc">${esc(t.description)}${t.location?' — '+esc(t.location):''}</div>${slaBar(t)}${t.resolved_at?`<div style="font-size:12px;color:#16a34a;margin:6px 0;">✅ Resolvido: ${fmtDate(t.resolved_at)}</div>`:''}${csatHTML(t,ops)}${ops?notesHTML(t):''}<div class="t-actions" style="margin-top:8px;">${ops&&t.status==='open'?`<button class="btn btn-blue" onclick="assignTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Assumir</button><button class="btn btn-green" onclick="resolveTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Resolver</button><button class="btn" onclick="opsPg('c',document.getElementById('so-c'));setTimeout(()=>selectChatTicket('${t.id}'),300)" style="font-size:12px;padding:6px 11px;">💬 Chat</button>`:''} ${!ops&&t.status==='open'?`<span class="badge bdg-a">Aguardando equipe SOS Tur</span><button class="btn" onclick="agPg('c',document.getElementById('sa-c'));setTimeout(()=>selectAgChat('${t.id}','${esc(t.num)}'),300)" style="font-size:12px;padding:5px 10px;margin-left:4px;">💬 Chat</button>`:''} ${t.status==='resolved'?`<span class="badge bdg-g">Encerrado</span>`:''} ${ops?`<button class="btn" onclick="showTimeline('${t.id}','${esc(t.num)}')" style="font-size:12px;padding:6px 11px;">📋 Histórico</button>`:''}</div></div>`;}
 
 async function loadDefaultTeam(){if(!db)return;try{const ex=await dbQ('sos_team');if(ex.length>0)return;const defs=[{name:'Renata Ferreira',wpp:'(11)99001-0001',shift:'Madrugada (00h–08h)',spec:'Geral',status:'available'},{name:'Marcos Oliveira',wpp:'(11)99001-0002',shift:'Manhã (08h–16h)',spec:'Voos e conexões',status:'available'},{name:'Julia Santos',wpp:'(11)99001-0003',shift:'Tarde/Noite (16h–00h)',spec:'Hotéis',status:'available'}];for(const d of defs)await dbI('sos_team',d);}catch(e){console.warn('loadDefaultTeam:',e.message);}}
 async function renderOpsTeamNow(){const team=await dbQ('sos_team');const el=document.getElementById('ops-team-now');if(!el)return;el.innerHTML=team.slice(0,4).map(a=>`<div class="agent-row"><div class="a-av" style="background:${a.status==='available'?'#16a34a':'#d97706'};">${esc(a.name.split(' ').map(w=>w[0]).join('').slice(0,2))}</div><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${esc(a.name)}</div><div style="font-size:12px;color:#64748b;">${esc(a.shift)}</div></div><span class="badge ${a.status==='available'?'bdg-g':'bdg-a'}">${a.status==='available'?'Disponível':'Ocupado'}</span></div>`).join('');}
@@ -992,7 +1036,7 @@ async function toggleAgent(id,s){try{await dbU('sos_team',id,{status:s==='availa
 async function deleteAgent(id){if(!confirm('Remover?'))return;try{await dbD('sos_team',id);loadTeamList();renderOpsTeamNow();toast('Removido.','w');}catch(e){toast('Erro ao remover.','e');}}
 function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;const box=document.getElementById('chat-box');const div=document.createElement('div');div.className='chat-msg op';div.innerHTML=`<div class="chat-bubble">${esc(msg)}</div><div class="chat-time">Agora — ${esc(user?.name||'Operador')}</div>`;box.appendChild(div);box.scrollTop=box.scrollHeight;inp.value='';}
 function qr(msg){document.getElementById('chat-inp').value=msg;sendChat();}
-async function renderReports(){await updateOpsStats();}
+async function renderReports(){await updateOpsStats();renderCharts(lastTks);renderAgencyMetrics(lastAgs,lastTks);}
 
 // ── RECUPERAÇÃO DE SENHA ──────────────────────
 function showForgot(show){
@@ -1215,6 +1259,73 @@ function showShortcutsModal(){
   document.body.appendChild(div);
   setTimeout(()=>document.addEventListener('click',()=>document.getElementById('sh-modal')?.remove(),{once:true}),50);
 }
+
+// ── CHARTS (Chart.js dinâmico) ───────────────
+let _chartJsLoaded=false,_chartType=null,_chartDays=null;
+function loadChartJs(){
+  if(_chartJsLoaded||window.Chart)return Promise.resolve();
+  return new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js';s.onload=()=>{_chartJsLoaded=true;res();};s.onerror=rej;document.head.appendChild(s);});
+}
+async function renderCharts(tks){
+  try{await loadChartJs();}catch(e){console.warn('Chart.js não carregou:',e);return;}
+  const byType={};tks.forEach(t=>{byType[t.type]=(byType[t.type]||0)+1;});
+  const typeLabels=Object.keys(byType);const typeVals=typeLabels.map(k=>byType[k]);
+  const palette=['#e11d48','#d97706','#16a34a','#2563eb','#7c3aed','#0891b2','#db2777','#059669'];
+  const tc=document.getElementById('chart-type');
+  if(tc&&typeLabels.length){
+    tc.style.display='block';
+    if(_chartType)_chartType.destroy();
+    _chartType=new Chart(tc,{type:'doughnut',data:{labels:typeLabels,datasets:[{data:typeVals,backgroundColor:palette.slice(0,typeLabels.length),borderWidth:0}]},options:{plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:12}}},cutout:'65%',maintainAspectRatio:true}});
+  }
+  const dc=document.getElementById('chart-days');
+  if(dc){
+    const days=[],counts=[];const now=new Date();
+    for(let i=13;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);days.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));counts.push(tks.filter(t=>new Date(t.created_at).toDateString()===d.toDateString()).length);}
+    if(_chartDays)_chartDays.destroy();
+    _chartDays=new Chart(dc,{type:'bar',data:{labels:days,datasets:[{label:'Chamados',data:counts,backgroundColor:'rgba(225,29,72,.7)',borderRadius:5}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:11}},grid:{color:'#f1f5f9'}},x:{ticks:{font:{size:10}},grid:{display:false}}}}});
+  }
+}
+async function renderAgencyMetrics(ags,tks){
+  const el=document.getElementById('rep-agencies');if(!el)return;
+  if(!ags.length){el.innerHTML='<div class="empty">Nenhuma agência cadastrada.</div>';return;}
+  const rows=ags.map(ag=>{
+    const agTks=tks.filter(t=>t.agency_id===ag.id);
+    const res=agTks.filter(t=>t.status==='resolved');
+    const rate=agTks.length?Math.round(res.length/agTks.length*100)+'%':'—';
+    const resDated=res.filter(t=>t.resolved_at&&t.created_at);
+    const avgSla=resDated.length?Math.round(resDated.reduce((s,t)=>s+Math.round((new Date(t.resolved_at)-new Date(t.created_at))/60000),0)/resDated.length)+' min':'—';
+    const rateNum=agTks.length?Math.round(res.length/agTks.length*100):null;
+    return `<tr><td><div style="font-weight:700;">${esc(ag.name)}</div><div style="font-size:11px;color:#64748b;">${esc(ag.city)}</div></td><td style="text-align:center;">${agTks.length}</td><td style="text-align:center;">${res.length}</td><td style="text-align:center;font-weight:600;color:${rateNum===null?'#64748b':rateNum>=80?'#16a34a':'#d97706'};">${rate}</td><td style="text-align:center;color:#64748b;">${avgSla}</td><td><span class="badge ${ag.status==='lead'?'bdg-a':'bdg-g'}">${ag.status==='lead'?'Lead':'Ativo'}</span></td></tr>`;
+  });
+  el.innerHTML=`<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Agência</th><th style="text-align:center;">Total</th><th style="text-align:center;">Resolvidos</th><th style="text-align:center;">Taxa</th><th style="text-align:center;">SLA médio</th><th>Status</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+}
+
+// ── TIMELINE ─────────────────────────────────
+async function showTimeline(ticketId,ticketNum){
+  document.getElementById('tl-modal')?.remove();
+  const overlay=document.createElement('div');overlay.id='tl-modal';overlay.className='modal-overlay';
+  overlay.innerHTML=`<div class="modal-box"><div class="modal-hd"><span style="font-weight:700;font-size:15px;">📋 Histórico — #${esc(ticketNum)}</span><button class="modal-close" onclick="document.getElementById('tl-modal').remove()">✕</button></div><div id="tl-content"><div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div></div></div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  if(!db){document.getElementById('tl-content').innerHTML='<div class="empty">Sem conexão.</div>';return;}
+  const{data}=await db.from('sos_audit_log').select('*').eq('entity_id',ticketId).order('created_at',{ascending:true});
+  const logs=data||[];
+  const tl=document.getElementById('tl-content');if(!tl)return;
+  if(!logs.length){tl.innerHTML='<div class="empty">Nenhum histórico registrado para este chamado.</div>';return;}
+  const dotColor={open:'#16a34a',assign:'#2563eb',resolve:'#16a34a',delete:'#e11d48',message:'#7c3aed'};
+  tl.innerHTML=`<div class="tl-line">${logs.map(l=>{const c=dotColor[l.action]||'#94a3b8';return `<div class="tl-item"><div class="tl-dot" style="background:${c};"></div><div class="tl-action" style="color:${c};">${esc(l.action.charAt(0).toUpperCase()+l.action.slice(1))}</div><div class="tl-detail">${esc(l.details||'—')}</div><div class="tl-time">${fmtDate(l.created_at)} · ${esc(l.user_name||l.user_email||'Sistema')}</div></div>`;}).join('')}</div>`;
+}
+
+// ── ONBOARDING (primeiro acesso) ──────────────
+function checkOnboarding(){
+  if(localStorage.getItem('sos-onboarded'))return;
+  const steps=user?.role==='ops'?[['📊','Dashboard','Visão geral com chamados P1, estatísticas e equipe de plantão.'],['🚨','Chamados','Gerencie chamados abertos. Use filtros P1/P2/P3 e a busca em tempo real.'],['💬','Chat','Comunique-se com agências via chat por chamado, com histórico completo.'],['🏢','Agências','Cadastre agências, veja métricas, SLA médio e taxa de resolução.'],['⌨','Atalhos','Pressione ? a qualquer momento para ver os atalhos de teclado.']]:
+    [['📊','Dashboard','Acompanhe chamados em aberto e o status do atendimento.'],['➕','Novo chamado','Abra chamados de emergência rapidamente informando tipo e prioridade.'],['💬','Chat','Converse em tempo real com a equipe SOS Tur sobre cada chamado.'],['⌨','Atalhos','Pressione ? a qualquer momento para ver os atalhos de teclado.']];
+  const overlay=document.createElement('div');overlay.id='ob-modal';overlay.className='modal-overlay';
+  overlay.innerHTML=`<div class="modal-box"><div class="modal-hd"><span style="font-size:16px;font-weight:800;">👋 Bem-vindo ao SOS Tur!</span><button class="modal-close" onclick="closeOnboarding()">✕</button></div><p style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;">Aqui está um guia rápido para você começar:</p>${steps.map(([ic,title,desc])=>`<div style="display:flex;gap:12px;margin-bottom:14px;"><div style="font-size:22px;flex-shrink:0;width:32px;text-align:center;">${ic}</div><div><div style="font-weight:700;font-size:13px;margin-bottom:2px;">${title}</div><div style="font-size:12px;color:#64748b;line-height:1.6;">${desc}</div></div></div>`).join('')}<button class="btn btn-red" style="width:100%;margin-top:10px;padding:11px;" onclick="closeOnboarding()">Entendido, vamos começar!</button></div>`;
+  document.body.appendChild(overlay);
+}
+function closeOnboarding(){localStorage.setItem('sos-onboarded','1');document.getElementById('ob-modal')?.remove();}
 
 window.addEventListener('load',init);
 

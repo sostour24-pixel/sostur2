@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOS Tur — Plantão 24h</title>
+<title>SOS Tour — Plantão Emergencial 24h para Agências de Viagens</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -133,11 +133,19 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 .login-back a{color:#fb7185;cursor:pointer;font-weight:600;}
 
 /* LANDING */
-#v-landing{background:#07090f;color:#f1f5f9;}
-.lp-nav{background:rgba(7,9,15,.9);backdrop-filter:blur(16px);border-bottom:1px solid #1e293b;height:60px;padding:0 48px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
+#v-landing{background:#07122e;color:#f1f5f9;}
+.lp-nav{background:rgba(7,18,46,.96);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.08);height:68px;padding:0 56px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
 .lp-logo-icon{width:32px;height:32px;background:#e11d48;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;}
 .lp-logo-name{font-size:18px;font-weight:800;color:#f1f5f9;}
 .lp-logo-name span{color:#fb7185;}
+.sos-brand{display:flex;align-items:center;gap:12px;cursor:pointer;}
+.sos-brand-text{line-height:1.1;}
+.sos-brand-sos{font-family:'Arial Black',Arial,sans-serif;font-weight:900;font-size:26px;color:#fff;letter-spacing:-1px;}
+.sos-brand-sos .plane{color:#e11d48;}
+.sos-brand-tour{font-size:9px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:6px;margin-top:-3px;}
+.sos-badge{border:2px solid rgba(255,255,255,.28);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0;letter-spacing:-.5px;}
+.sos-brand-sm .sos-brand-sos{font-size:18px;}
+.sos-brand-sm .sos-badge{width:32px;height:32px;font-size:9px;}
 .lp-nav-right{margin-left:auto;display:flex;align-items:center;gap:9px;}
 .lp-live{display:flex;align-items:center;gap:5px;background:rgba(225,29,72,.1);border:1px solid rgba(225,29,72,.2);color:#fb7185;padding:5px 12px;border-radius:100px;font-size:12px;font-weight:600;}
 .lp-dot{width:6px;height:6px;border-radius:50%;background:#e11d48;animation:pulse 1.8s infinite;}
@@ -172,7 +180,14 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 .lp-srv-icon{font-size:22px;margin-bottom:12px;}
 .lp-srv-title{font-weight:700;font-size:14px;margin-bottom:6px;}
 .lp-srv-desc{font-size:12px;color:#64748b;line-height:1.7;}
-.lp-pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.lp-srv-list{display:flex;flex-direction:column;border:1px solid #1e293b;border-radius:14px;overflow:hidden;}
+.lp-srv-item{display:flex;align-items:flex-start;gap:18px;padding:22px 28px;background:#0d1729;border-bottom:1px solid #1e293b;transition:background .2s;}
+.lp-srv-item:last-child{border-bottom:none;}
+.lp-srv-item:hover{background:#121e36;}
+.lp-srv-chk{width:28px;height:28px;background:rgba(225,29,72,.12);border:1px solid rgba(225,29,72,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#e11d48;font-weight:800;font-size:14px;flex-shrink:0;margin-top:2px;}
+.lp-srv-name{font-weight:700;font-size:15px;color:#f1f5f9;margin-bottom:4px;}
+.lp-srv-d{font-size:13px;color:#64748b;line-height:1.6;}
+.lp-pricing{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:820px;margin:0 auto;}
 .lp-price{background:#111827;border:1px solid #1e293b;border-radius:16px;padding:28px;position:relative;transition:all .2s;}
 .lp-price:hover{border-color:#334155;}
 .lp-price.featured{border-color:rgba(225,29,72,.4);}
@@ -237,8 +252,14 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 <div class="toast-wrap" id="toast-wrap"></div>
 
 <!-- LOADING -->
-<div class="view active" id="v-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#07090f;min-height:100vh;">
-  <div style="display:flex;align-items:center;gap:8px;"><div class="lp-logo-icon">S</div><span style="font-size:20px;font-weight:800;color:#f1f5f9;">SOS <span style="color:#fb7185;">Tur</span></span></div>
+<div class="view active" id="v-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:#07122e;min-height:100vh;">
+  <div class="sos-brand">
+    <div class="sos-brand-text">
+      <div class="sos-brand-sos">S<span class="plane">✈</span>S</div>
+      <div class="sos-brand-tour">TOUR</div>
+    </div>
+    <div class="sos-badge">24/7</div>
+  </div>
   <div class="spinner"></div>
   <p style="font-size:13px;color:#64748b;">Carregando...</p>
 </div>
@@ -246,10 +267,14 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 <!-- LANDING -->
 <div class="view" id="v-landing">
   <nav class="lp-nav">
-    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="goView('landing')">
-      <div class="lp-logo-icon">S</div>
-      <div class="lp-logo-name">SOS <span>Tur</span></div>
+    <div class="sos-brand" onclick="goView('landing')">
+      <div class="sos-brand-text">
+        <div class="sos-brand-sos">S<span class="plane">✈</span>S</div>
+        <div class="sos-brand-tour">TOUR</div>
+      </div>
+      <div class="sos-badge">24/7</div>
     </div>
+    <div style="font-size:12px;color:rgba(255,255,255,.35);font-weight:500;margin-left:4px;">Plantão Emergencial para Agências de Viagens</div>
     <div class="lp-nav-right">
       <div class="lp-live"><div class="lp-dot"></div>Plantão ativo</div>
       <span class="lp-clock" id="lp-clock"></span>
@@ -259,9 +284,9 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
   </nav>
 
   <div class="lp-hero">
-    <div class="lp-eyebrow"><div class="lp-dot"></div>Plantão 24h — fins de semana e feriados</div>
+    <div class="lp-eyebrow"><div class="lp-dot"></div>Plantão Emergencial — Segunda a Sexta 19h–08h · Fins de semana e feriados 24h</div>
     <h1>Sua agência nunca mais fica<br>sem <em>suporte fora do horário</em></h1>
-    <p>Sua equipe não trabalha 24h — mas seus clientes viajam 24h. O SOS Tur é o plantão terceirizado que resolve qualquer imprevisto quando você não está disponível.</p>
+    <p>Sua equipe não trabalha 24h — mas seus clientes viajam 24h. O SOS Tour é o plantão terceirizado que resolve qualquer imprevisto quando você não está disponível.</p>
     <div class="lp-ctas">
       <button class="btn-lp-red" style="padding:13px 28px;font-size:15px;" onclick="document.getElementById('lp-contact').scrollIntoView({behavior:'smooth'})">Contratar agora</button>
       <button class="btn-ghost" style="padding:13px 28px;font-size:15px;" onclick="document.getElementById('lp-pricing').scrollIntoView({behavior:'smooth'})">Ver planos e preços</button>
@@ -292,10 +317,13 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
   <div class="lp-sec">
     <div class="lp-sec-label">Serviços</div>
     <h2 class="lp-sec-title">O que resolvemos</h2>
-    <p class="lp-sec-sub">Qualquer imprevisto com seu cliente em viagem, a qualquer hora do dia ou da noite.</p>
-    <div class="lp-services">
-      <div class="lp-srv"><div class="lp-srv-icon">✈️</div><div class="lp-srv-title">Cancelamento de voo</div><div class="lp-srv-desc">Reacomodação e busca de alternativas.</div></div>
-      <div class="lp-srv"><div class="lp-srv-icon">🏨</div><div class="lp-srv-title">Problema de hotel</div><div class="lp-srv-desc">Overbooking ou problema no quarto. Realocamos imediatamente.</div></div>
+    <p class="lp-sec-sub">Nossa equipe assume e resolve o mais rápido possível — hotel, voo, seguro, documentação.</p>
+    <div class="lp-srv-list">
+      <div class="lp-srv-item"><div class="lp-srv-chk">✓</div><div><div class="lp-srv-name">Cancelamento de voo</div><div class="lp-srv-d">Reacomodação imediata e busca das melhores alternativas disponíveis.</div></div></div>
+      <div class="lp-srv-item"><div class="lp-srv-chk">✓</div><div><div class="lp-srv-name">Reemissão de Passagens</div><div class="lp-srv-d">Remarcação e reemissão de bilhetes aéreos em caráter emergencial.</div></div></div>
+      <div class="lp-srv-item"><div class="lp-srv-chk">✓</div><div><div class="lp-srv-name">Emissão de Passagens</div><div class="lp-srv-d">Emissão de novos bilhetes para resolução de imprevistos em viagem.</div></div></div>
+      <div class="lp-srv-item"><div class="lp-srv-chk">✓</div><div><div class="lp-srv-name">Reenvio de Voucher</div><div class="lp-srv-d">Reenvio imediato de vouchers e confirmações de serviços contratados.</div></div></div>
+      <div class="lp-srv-item"><div class="lp-srv-chk">✓</div><div><div class="lp-srv-name">Reacomodação de hospedagem</div><div class="lp-srv-d">Resolução de problemas de hotel e realocação emergencial de hóspedes.</div></div></div>
     </div>
   </div>
 
@@ -343,20 +371,6 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
         </ul>
         <button class="btn-lp-red" style="width:100%;justify-content:center;padding:11px;" onclick="document.getElementById('lp-contact').scrollIntoView({behavior:'smooth'})">Contratar Profissional</button>
       </div>
-      <div class="lp-price">
-        <div class="lp-price-plan">Rede / Franquia</div>
-        <div class="lp-price-amount"><sup>R$</sup>639<span style="font-size:16px;font-weight:400;color:#64748b;">,00/mês</span></div>
-        <div class="lp-price-period">Até 5 agências no mesmo plano</div>
-        <div class="lp-price-div"></div>
-        <ul class="lp-price-feats">
-          <li><span class="ck">✓</span>Tudo do Profissional</li>
-          <li><span class="ck">✓</span>5 agências cobertas</li>
-          <li><span class="ck">✓</span>Gerente de conta dedicado</li>
-          <li><span class="ck">✓</span>SLA contratual assinado</li>
-          <li><span class="ck">✓</span>Relatório por agência</li>
-        </ul>
-        <button class="btn-ghost" style="width:100%;justify-content:center;padding:11px;" onclick="document.getElementById('lp-contact').scrollIntoView({behavior:'smooth'})">Contratar Rede</button>
-      </div>
     </div>
   </div>
 
@@ -393,7 +407,6 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
           <select id="ct-plan">
             <option value="Essencial">Essencial — R$ 1.999,99/mês</option>
             <option value="Profissional" selected>Profissional — R$ 4.999,99/mês</option>
-            <option value="Rede">Rede / Franquia — R$ 639,00/mês</option>
           </select>
         </div>
         <div style="background:rgba(225,29,72,.06);border:1px solid rgba(225,29,72,.12);border-radius:8px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#64748b;">🔒 Dados confidenciais. Retorno em até 2 horas úteis.</div>
@@ -404,8 +417,14 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
   </div>
 
   <footer class="lp-footer">
-    <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" onclick="goView('landing')"><div class="lp-logo-icon">S</div><div class="lp-logo-name">SOS <span>Tur</span></div></div>
-    <div class="lp-footer-copy">© 2025 SOS Tur — Plantão 24h para Agências de Viagens</div>
+    <div class="sos-brand sos-brand-sm" onclick="goView('landing')">
+      <div class="sos-brand-text">
+        <div class="sos-brand-sos">S<span class="plane">✈</span>S</div>
+        <div class="sos-brand-tour">TOUR</div>
+      </div>
+      <div class="sos-badge">24/7</div>
+    </div>
+    <div class="lp-footer-copy">© 2025 SOS Tour — Plantão Emergencial para Agências de Viagens</div>
     <div class="lp-footer-links"><a>Privacidade</a><a>Termos</a><a onclick="openLogin('agency')">Acesso ao portal</a></div>
   </footer>
 </div>
@@ -413,9 +432,14 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 <!-- LOGIN -->
 <div class="view" id="v-login">
   <div style="width:100%;max-width:400px;margin:0 auto;">
-    <div class="login-logo" style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:22px;">
-      <div class="lp-logo-icon">S</div>
-      <span style="font-size:20px;font-weight:800;color:#f1f5f9;">SOS <span style="color:#fb7185;">Tur</span></span>
+    <div class="login-logo" style="justify-content:center;margin-bottom:22px;">
+      <div class="sos-brand" style="justify-content:center;">
+        <div class="sos-brand-text">
+          <div class="sos-brand-sos">S<span class="plane">✈</span>S</div>
+          <div class="sos-brand-tour">TOUR</div>
+        </div>
+        <div class="sos-badge">24/7</div>
+      </div>
     </div>
     <div class="login-card">
       <div class="login-title">Acesso exclusivo</div>
@@ -438,8 +462,11 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 <!-- PORTAL DA AGÊNCIA -->
 <div class="view" id="v-agency">
   <div class="topbar">
-    <div class="logo" onclick="goView('landing')"><div class="logo-icon">S</div><div class="logo-name">SOS <span>Tur</span></div></div>
-    <span style="font-size:12px;color:#64748b;font-weight:600;margin-left:8px;">Portal da agência</span>
+    <div onclick="goView('landing')" style="cursor:pointer;display:flex;align-items:center;gap:6px;background:#07122e;border-radius:8px;padding:5px 10px;">
+      <div style="font-family:'Arial Black',Arial,sans-serif;font-weight:900;font-size:15px;color:#fff;letter-spacing:-.5px;line-height:1.1;">S<span style="color:#e11d48;">✈</span>S</div>
+      <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:4px;margin-top:1px;">TOUR</div>
+    </div>
+    <span style="font-size:12px;color:#64748b;font-weight:600;margin-left:4px;">Portal da agência</span>
     <div class="topbar-right">
       <div class="live-badge"><div class="live-dot"></div>Plantão ativo</div>
       <span id="sy-clock-ag" style="font-size:13px;color:#64748b;font-weight:600;"></span>
@@ -528,8 +555,11 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 <!-- CENTRAL DE OPERAÇÕES -->
 <div class="view" id="v-ops">
   <div class="topbar">
-    <div class="logo" onclick="goView('landing')"><div class="logo-icon">S</div><div class="logo-name">SOS <span>Tur</span></div></div>
-    <span style="font-size:12px;color:#64748b;font-weight:600;margin-left:8px;">Central de operações</span>
+    <div onclick="goView('landing')" style="cursor:pointer;display:flex;align-items:center;gap:6px;background:#07122e;border-radius:8px;padding:5px 10px;">
+      <div style="font-family:'Arial Black',Arial,sans-serif;font-weight:900;font-size:15px;color:#fff;letter-spacing:-.5px;line-height:1.1;">S<span style="color:#e11d48;">✈</span>S</div>
+      <div style="font-size:7px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:4px;margin-top:1px;">TOUR</div>
+    </div>
+    <span style="font-size:12px;color:#64748b;font-weight:600;margin-left:4px;">Central de operações</span>
     <div class="topbar-right">
       <div class="live-badge"><div class="live-dot"></div>Plantão ativo</div>
       <span id="sy-clock-ops" style="font-size:13px;color:#64748b;font-weight:600;"></span>

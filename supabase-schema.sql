@@ -197,6 +197,10 @@ create policy "usuario ve proprio perfil"
   on public.sos_users for select
   using (email = (auth.jwt() ->> 'email'));
 
+-- COLUNAS ADICIONAIS EM CHAMADOS
+alter table public.sos_tickets add column if not exists csat_score integer;
+alter table public.sos_tickets add column if not exists internal_notes text;
+
 -- LOG DE AUDITORIA
 create table if not exists public.sos_audit_log (
   id          uuid primary key default gen_random_uuid(),

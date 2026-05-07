@@ -100,6 +100,21 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
 .tbl tr:last-child td{border:none;}
 .tbl td+td,.tbl th+th{padding-left:12px;}
 
+/* CSAT STARS */
+.csat-stars button{border:none;background:none;font-size:20px;cursor:pointer;padding:0 2px;line-height:1;transition:transform .1s;}
+.csat-stars button:hover{transform:scale(1.2);}
+.csat-rated{font-size:13px;color:#d97706;}
+
+/* SEARCH BAR */
+.search-bar{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px 9px 36px;font-size:13px;font-family:'Inter',sans-serif;outline:none;background:#f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z'/%3E%3C/svg%3E") no-repeat 10px center;margin-bottom:14px;}
+.search-bar:focus{border-color:#e11d48;background-color:#fff;}
+
+/* SHORTCUTS MODAL */
+.sh-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 16px 48px rgba(0,0,0,.18);z-index:9999;min-width:260px;max-width:320px;}
+.sh-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:13px;}
+.sh-row:last-child{border:none;}
+.sh-key{background:#f1f5f9;padding:3px 10px;border-radius:5px;font-family:monospace;font-size:12px;font-weight:700;}
+
 /* SLA BAR */
 .sla-bar{height:4px;border-radius:4px;background:#e2e8f0;margin-top:6px;overflow:hidden;}
 .sla-fill{height:100%;border-radius:4px;transition:width .3s;}
@@ -515,6 +530,7 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
       <button class="sb-btn on-b" id="sa-d"  onclick="agPg('d',this)">📊 Dashboard</button>
       <button class="sb-btn" id="sa-n"  onclick="agPg('n',this)">🚨 Abrir chamado</button>
       <button class="sb-btn" id="sa-t"  onclick="agPg('t',this)">📋 Meus chamados <span class="sb-count cnt-r" id="sa-cnt">0</span></button>
+      <button class="sb-btn" id="sa-c"  onclick="agPg('c',this)">💬 Chat com SOS Tur</button>
       <div class="sb-sec">Conta</div>
       <button class="sb-btn" id="sa-a"  onclick="agPg('a',this)">🏢 Minha agência</button>
       <button class="sb-btn" id="sa-dc" onclick="agPg('dc',this)">📄 Documentos</button>
@@ -563,8 +579,24 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
       </div>
       <div class="page" id="ap-t">
         <div style="font-size:21px;font-weight:800;margin-bottom:3px;">Meus chamados</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:20px;">Somente os chamados da sua agência.</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:12px;">Somente os chamados da sua agência.</div>
+        <input class="search-bar" id="ag-search" placeholder="Buscar por número, passageiro, tipo..." oninput="searchAgTickets(this.value)">
         <div id="ag-tlist"></div>
+      </div>
+      <div class="page" id="ap-c">
+        <div style="font-size:21px;font-weight:800;margin-bottom:3px;">Chat com SOS Tur</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:20px;">Converse diretamente com nossa equipe de plantão.</div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">Seus chamados abertos</div>
+            <div id="ag-chat-tickets"><div class="empty" style="color:#94a3b8;">Carregando...</div></div>
+          </div>
+          <div class="card" style="padding:14px;">
+            <div id="ag-chat-header" style="font-weight:600;font-size:13px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid #e2e8f0;color:#64748b;">Selecione um chamado →</div>
+            <div class="chat-box" id="ag-chat-box"><div class="empty" style="color:#94a3b8;">Selecione um chamado para iniciar o chat.</div></div>
+            <div style="display:flex;gap:8px;margin-top:10px;"><input id="ag-chat-inp" style="flex:1;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;outline:none;background:#f8fafc;" placeholder="Escreva..." onkeypress="if(event.key==='Enter')sendAgChat()"><button class="btn btn-blue" onclick="sendAgChat()" style="font-size:12px;padding:7px 12px;">Enviar</button></div>
+          </div>
+        </div>
       </div>
       <div class="page" id="ap-a">
         <div style="font-size:21px;font-weight:800;margin-bottom:3px;">Dados da agência</div>
@@ -586,7 +618,7 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
     <button class="mob-btn on" id="mab-d" onclick="agPg('d',document.getElementById('sa-d'))"><span class="mob-icon">📊</span>Dashboard</button>
     <button class="mob-btn" id="mab-n" onclick="agPg('n',document.getElementById('sa-n'))"><span class="mob-icon">🚨</span>Chamado</button>
     <button class="mob-btn" id="mab-t" onclick="agPg('t',document.getElementById('sa-t'))"><span class="mob-icon">📋</span>Chamados</button>
-    <button class="mob-btn" id="mab-a" onclick="agPg('a',document.getElementById('sa-a'))"><span class="mob-icon">🏢</span>Agência</button>
+    <button class="mob-btn" id="mab-c" onclick="agPg('c',document.getElementById('sa-c'))"><span class="mob-icon">💬</span>Chat</button>
   </nav>
 </div>
 
@@ -639,29 +671,33 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
         </div>
       </div>
       <div class="page" id="op-o">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
           <div style="font-size:21px;font-weight:800;">Chamados em aberto</div>
-          <div style="display:flex;gap:6px;"><button class="btn btn-red" onclick="filterT('P1')" style="font-size:12px;padding:5px 10px;">P1</button><button class="btn" onclick="filterT('P2')" style="font-size:12px;padding:5px 10px;">P2</button><button class="btn" onclick="filterT('P3')" style="font-size:12px;padding:5px 10px;">P3</button><button class="btn" onclick="filterT('all')" style="font-size:12px;padding:5px 10px;">Todos</button></div>
+          <div style="display:flex;gap:6px;"><button class="btn btn-red" onclick="filterT('P1',1)" style="font-size:12px;padding:5px 10px;">P1</button><button class="btn" onclick="filterT('P2',1)" style="font-size:12px;padding:5px 10px;">P2</button><button class="btn" onclick="filterT('P3',1)" style="font-size:12px;padding:5px 10px;">P3</button><button class="btn" onclick="filterT('all',1)" style="font-size:12px;padding:5px 10px;">Todos</button></div>
         </div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:14px;">Todos os chamados de todas as agências.</div>
+        <input class="search-bar" id="ops-search" placeholder="Buscar por número, agência, passageiro..." oninput="searchOpsTickets(this.value)">
         <div id="ops-olist"></div>
       </div>
       <div class="page" id="op-r">
-        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Chamados resolvidos</div>
+        <div style="font-size:21px;font-weight:800;margin-bottom:10px;">Chamados resolvidos</div>
+        <input class="search-bar" id="ops-res-search" placeholder="Buscar por número, agência, passageiro..." oninput="searchOpsResolved(this.value)">
         <div id="ops-rlist"></div>
       </div>
       <div class="page" id="op-c">
-        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Chat com agência</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <div style="font-size:21px;font-weight:800;">Chat com agência</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;color:#64748b;">Chamado:</span>
+            <select id="chat-ticket-sel" onchange="selectChatTicket(this.value)" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px;font-size:13px;font-family:'Inter',sans-serif;outline:none;background:#f8fafc;min-width:240px;">
+              <option value="">Selecione um chamado...</option>
+            </select>
+          </div>
+        </div>
         <div class="grid-2">
           <div class="card" style="padding:14px;">
-            <div style="font-weight:700;font-size:14px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid #e2e8f0;">Atendimento ativo</div>
-            <div class="chat-box" id="chat-box">
-              <div class="chat-msg ag"><div class="chat-bubble">Voo cancelado, 4 passageiros no aeroporto. Precisamos de ajuda urgente.</div><div class="chat-time">há 8 min</div></div>
-              <div class="chat-msg op"><div class="chat-bubble">Recebemos! Buscando alternativas agora. Retorno em 5 minutos.</div><div class="chat-time">há 6 min</div></div>
-              <div class="chat-msg op"><div class="chat-bubble">LATAM LA8078 às 11h30. Confirmo os 4 assentos?</div><div class="chat-time">há 2 min</div></div>
-              <div class="chat-msg ag"><div class="chat-bubble">Sim! Passageiros no terminal 2.</div><div class="chat-time">há 1 min</div></div>
-            </div>
-            <div style="display:flex;gap:8px;"><input id="chat-inp" style="flex:1;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;outline:none;background:#f8fafc;" placeholder="Escreva..." onkeypress="if(event.key==='Enter')sendChat()"><button class="btn btn-blue" onclick="sendChat()" style="font-size:12px;padding:7px 12px;">Enviar</button></div>
+            <div id="chat-ticket-info" style="font-weight:600;font-size:13px;margin-bottom:10px;padding-bottom:9px;border-bottom:1px solid #e2e8f0;color:#64748b;">Selecione um chamado →</div>
+            <div class="chat-box" id="chat-box"><div class="empty" style="color:#94a3b8;">Selecione um chamado para ver o chat.</div></div>
+            <div style="display:flex;gap:8px;margin-top:10px;"><input id="chat-inp" style="flex:1;border:1.5px solid #e2e8f0;border-radius:8px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;outline:none;background:#f8fafc;" placeholder="Escreva..." onkeypress="if(event.key==='Enter')sendChat()"><button id="chat-send-btn" class="btn btn-blue" onclick="sendChat()" style="font-size:12px;padding:7px 12px;">Enviar</button></div>
           </div>
           <div class="card">
             <div class="card-title">Respostas rápidas</div>
@@ -698,7 +734,10 @@ body{font-family:'Inter',sans-serif;background:#f8fafc;color:#0f172a;}
         <div class="card"><div id="audit-list"><div class="empty" style="color:#94a3b8;">Carregando...</div></div></div>
       </div>
       <div class="page" id="op-rep">
-        <div style="font-size:21px;font-weight:800;margin-bottom:14px;">Relatórios</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:21px;font-weight:800;">Relatórios</div>
+          <button id="export-btn" class="btn btn-blue" onclick="exportCSV()" style="font-size:13px;">⬇ Exportar CSV</button>
+        </div>
         <div class="grid-2">
           <div class="card">
             <div class="card-title">Resumo financeiro</div>
@@ -727,10 +766,14 @@ const SUPABASE_KEY='__SUPABASE_KEY__';
 let db=null,user=null,agency=null,tf='all',ltab='agency';
 const PER_PAGE=15;
 let opsTicketPage=1,agTicketPage=1,resTicketPage=1;
+let opsSearchQ='',opsResSearchQ='',agSearchQ='';
+let opsSearchTimer=null,opsResSearchTimer=null,agSearchTimer=null;
+let activeChatTicket=null,chChat=null;
+let activeAgChatTicket=null,chAgChat=null;
 
 async function init(){
   try{db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);await loadDefaultTeam();}catch(e){console.warn(e.message);}
-  startClocks();
+  startClocks();setupKeyboardShortcuts();
   const s=sessionStorage.getItem('sos');
   if(s){try{user=JSON.parse(s);setUserUI();hide();if(user.role==='ops'){show('ops');loadOps();subscribeOps();}else{await loadAgencyUser();show('agency');loadAgencyPortal();if(agency?.id)subscribeAgency(agency.id);}return;}catch(e){sessionStorage.removeItem('sos');}}
   hide();show('landing');loadHeroCount();
@@ -836,8 +879,8 @@ async function submitContact(){
   finally{btnLoad(btn,false);btn.textContent='Quero contratar o SOS Tur →';}
 }
 
-function agPg(p,btn){document.querySelectorAll('#v-agency .page').forEach(x=>x.classList.remove('on'));document.getElementById('ap-'+p).classList.add('on');document.querySelectorAll('#v-agency .sb-btn').forEach(b=>b.classList.remove('on-b','on-r','on-g'));if(btn)btn.classList.add('on-b');document.querySelectorAll('#ag-mob .mob-btn').forEach(b=>b.classList.remove('on'));const mab=document.getElementById('mab-'+p);if(mab)mab.classList.add('on');}
-function opsPg(p,btn){document.querySelectorAll('#v-ops .page').forEach(x=>x.classList.remove('on'));document.getElementById('op-'+p).classList.add('on');document.querySelectorAll('#v-ops .sb-btn').forEach(b=>b.classList.remove('on-r','on-b','on-g'));if(btn)btn.classList.add('on-r');document.querySelectorAll('#ops-mob .mob-btn').forEach(b=>b.classList.remove('on'));const mob=document.getElementById('mob-'+p);if(mob)mob.classList.add('on');if(p==='t')loadTeamList();if(p==='rep')renderReports();if(p==='o')filterT(tf,1);if(p==='r')loadOpsResolved(1);if(p==='aud')loadAuditLog();}
+function agPg(p,btn){document.querySelectorAll('#v-agency .page').forEach(x=>x.classList.remove('on'));document.getElementById('ap-'+p).classList.add('on');document.querySelectorAll('#v-agency .sb-btn').forEach(b=>b.classList.remove('on-b','on-r','on-g'));if(btn)btn.classList.add('on-b');document.querySelectorAll('#ag-mob .mob-btn').forEach(b=>b.classList.remove('on'));const mab=document.getElementById('mab-'+p);if(mab)mab.classList.add('on');if(p==='c')loadAgencyChatTickets();}
+function opsPg(p,btn){document.querySelectorAll('#v-ops .page').forEach(x=>x.classList.remove('on'));document.getElementById('op-'+p).classList.add('on');document.querySelectorAll('#v-ops .sb-btn').forEach(b=>b.classList.remove('on-r','on-b','on-g'));if(btn)btn.classList.add('on-r');document.querySelectorAll('#ops-mob .mob-btn').forEach(b=>b.classList.remove('on'));const mob=document.getElementById('mob-'+p);if(mob)mob.classList.add('on');if(p==='t')loadTeamList();if(p==='rep')renderReports();if(p==='o')filterT(tf,1);if(p==='r')loadOpsResolved(1);if(p==='aud')loadAuditLog();if(p==='c')loadChatTicketList();}
 
 async function loadAgencyPortal(){
   if(!user)return;if(!agency)await loadAgencyUser();
@@ -862,9 +905,11 @@ async function loadAgencyTickets(page){
   const tlEl=document.getElementById('ag-tlist');if(!tlEl)return;
   tlEl.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';
   const from=(agTicketPage-1)*PER_PAGE,to=from+PER_PAGE-1;
-  const{data,count}=await db.from('sos_tickets').select('*',{count:'exact'}).eq('agency_id',agency.id).order('created_at',{ascending:false}).range(from,to);
+  let q=db.from('sos_tickets').select('*',{count:'exact'}).eq('agency_id',agency.id).order('created_at',{ascending:false}).range(from,to);
+  if(agSearchQ)q=q.or(`num.ilike.%${agSearchQ}%,pax.ilike.%${agSearchQ}%,type.ilike.%${agSearchQ}%`);
+  const{data,count}=await q;
   const tks=data||[];
-  tlEl.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado ainda.</div>')+renderPagination(agTicketPage,count||0,PER_PAGE,'agTicketPrev','agTicketNext');
+  tlEl.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum chamado encontrado.</div>')+renderPagination(agTicketPage,count||0,PER_PAGE,'agTicketPrev','agTicketNext');
 }
 function agTicketPrev(){loadAgencyTickets(agTicketPage-1);}
 function agTicketNext(){loadAgencyTickets(agTicketPage+1);}
@@ -873,9 +918,11 @@ async function loadOpsResolved(page){
   const el=document.getElementById('ops-rlist');if(!el)return;
   el.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';
   const from=(resTicketPage-1)*PER_PAGE,to=from+PER_PAGE-1;
-  const{data,count}=await db.from('sos_tickets').select('*',{count:'exact'}).eq('status','resolved').order('resolved_at',{ascending:false}).range(from,to);
+  let q=db.from('sos_tickets').select('*',{count:'exact'}).eq('status','resolved').order('resolved_at',{ascending:false}).range(from,to);
+  if(opsResSearchQ)q=q.or(`num.ilike.%${opsResSearchQ}%,agency_name.ilike.%${opsResSearchQ}%,pax.ilike.%${opsResSearchQ}%`);
+  const{data,count}=await q;
   const tks=data||[];
-  el.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,false)).join(''):'<div class="empty">Nenhum resolvido ainda.</div>')+renderPagination(resTicketPage,count||0,PER_PAGE,'resTicketPrev','resTicketNext');
+  el.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,true)).join(''):'<div class="empty">Nenhum resolvido encontrado.</div>')+renderPagination(resTicketPage,count||0,PER_PAGE,'resTicketPrev','resTicketNext');
 }
 function resTicketPrev(){loadOpsResolved(resTicketPage-1);}
 function resTicketNext(){loadOpsResolved(resTicketPage+1);}
@@ -925,14 +972,17 @@ async function updateOpsStats(){
   const byType={};tks.forEach(t=>{byType[t.type]=(byType[t.type]||0)+1;});
   const rt=document.getElementById('rep-types');if(rt)rt.innerHTML=Object.keys(byType).length?Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="stat-row"><span style="color:#64748b;">${esc(k)}</span><span style="font-weight:700;">${v}</span></div>`).join(''):'<div class="empty" style="padding:16px;">Sem dados.</div>';
 }
-async function filterT(f,page){tf=f;opsTicketPage=page||1;if(!db)return;const el=document.getElementById('ops-olist');if(!el)return;el.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';const from=(opsTicketPage-1)*PER_PAGE,to=from+PER_PAGE-1;let q=db.from('sos_tickets').select('*',{count:'exact'}).eq('status','open').order('priority',{ascending:true}).order('created_at',{ascending:false}).range(from,to);if(f!=='all')q=q.eq('priority',f);const{data,count}=await q;const tks=data||[];el.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,true)).join(''):'<div class="empty">Nenhum chamado aberto.</div>')+renderPagination(opsTicketPage,count||0,PER_PAGE,'opsTktPrev','opsTktNext');}
+function searchOpsTickets(q){clearTimeout(opsSearchTimer);opsSearchTimer=setTimeout(()=>{opsSearchQ=q;filterT(tf,1);},380);}
+function searchOpsResolved(q){clearTimeout(opsResSearchTimer);opsResSearchTimer=setTimeout(()=>{opsResSearchQ=q;loadOpsResolved(1);},380);}
+function searchAgTickets(q){clearTimeout(agSearchTimer);agSearchTimer=setTimeout(()=>{agSearchQ=q;loadAgencyTickets(1);},380);}
+async function filterT(f,page){tf=f;opsTicketPage=page||1;if(!db)return;const el=document.getElementById('ops-olist');if(!el)return;el.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';const from=(opsTicketPage-1)*PER_PAGE,to=from+PER_PAGE-1;let q=db.from('sos_tickets').select('*',{count:'exact'}).eq('status','open').order('priority',{ascending:true}).order('created_at',{ascending:false}).range(from,to);if(f!=='all')q=q.eq('priority',f);if(opsSearchQ)q=q.or(`num.ilike.%${opsSearchQ}%,agency_name.ilike.%${opsSearchQ}%,pax.ilike.%${opsSearchQ}%`);const{data,count}=await q;const tks=data||[];el.innerHTML=(tks.length?tks.map(t=>ticketHTML(t,true)).join(''):'<div class="empty">Nenhum chamado encontrado.</div>')+renderPagination(opsTicketPage,count||0,PER_PAGE,'opsTktPrev','opsTktNext');}
 function opsTktPrev(){filterT(tf,opsTicketPage-1);}
 function opsTktNext(){filterT(tf,opsTicketPage+1);}
 async function assignTicket(id,btn){if(btn)btnLoad(btn,true);try{const team=await dbQ('sos_team');const av=team.find(a=>a.status==='available');const name=av?av.name:(user?.name||'Agente');await dbU('sos_tickets',id,{assigned_to:name});if(av)await dbU('sos_team',av.id,{status:'busy'});await logAudit('assign','ticket',id,id,'Assumido por '+name);toast('Assumido por '+name,'i');updateOpsStats();renderOpsTeamNow();}catch(e){toast('Erro ao assumir chamado.','e');}finally{if(btn){btnLoad(btn,false);btn.textContent='Assumir';}}}
 async function resolveTicket(id,btn){if(btn)btnLoad(btn,true);try{await dbU('sos_tickets',id,{status:'resolved',resolved_at:new Date().toISOString()});await logAudit('resolve','ticket',id,id,'Resolvido por '+( user?.name||'Operador'));toast('Chamado resolvido! ✅','s');updateOpsStats();}catch(e){toast('Erro ao resolver chamado.','e');}finally{if(btn){btnLoad(btn,false);btn.textContent='Resolver';}}}
 function renderOpsAgencies(ags){const el=document.getElementById('ops-aglist');if(!el)return;if(!ags.length){el.innerHTML='<div class="empty">Nenhuma agência.</div>';return;}el.innerHTML=`<div style="overflow-x:auto;"><table class="tbl"><thead><tr><th>Agência</th><th>Plano</th><th>Cidade</th><th>Valor/mês</th><th>Chamados</th><th>Status</th><th></th></tr></thead><tbody>${ags.map(ag=>`<tr><td><div style="font-weight:700;">${esc(ag.name)}</div><div style="font-size:12px;color:#64748b;">${esc(ag.resp)}</div></td><td><span class="badge bdg-r">${esc(ag.plan)}</span></td><td>${esc(ag.city)}</td><td style="font-weight:700;color:#16a34a;">${cur(ag.price)}</td><td>${ag.tickets||0}</td><td><span class="badge ${ag.status==='lead'?'bdg-a':'bdg-g'}">${ag.status==='lead'?'Lead':'Ativo'}</span></td><td><button class="btn" onclick="removeAg(${JSON.stringify(ag.id)},${JSON.stringify(ag.name)})" style="font-size:11px;padding:3px 8px;color:#e11d48;">✕</button></td></tr>`).join('')}</tbody></table></div>`;}
 async function removeAg(id,name){if(!confirm('Remover "'+name+'"?'))return;try{await logAudit('delete','agency',id,name,'Removida por '+(user?.name||'Operador'));await dbD('sos_agencies',id);toast('Removida.','w');updateOpsStats();}catch(e){toast('Erro ao remover: '+(e.message||'Tente novamente.'),'e');}}
-function ticketHTML(t,ops){const pc=t.priority==='P1'?'p1':t.priority==='P2'?'p2':'p3';const sc=t.status==='resolved'?'done':pc;const bc=t.priority==='P1'?'bdg-r':t.priority==='P2'?'bdg-a':'bdg-g';return `<div class="ticket ${sc}"><div class="t-hd"><span class="t-num">#${esc(t.num)}</span><span class="badge ${bc}">${esc(t.priority)}</span><span class="badge ${t.status==='open'?'bdg-r':'bdg-g'}">${t.status==='open'?'Em aberto':'Resolvido'}</span>${t.assigned_to?`<span class="badge bdg-b">Agente: ${esc(t.assigned_to)}</span>`:''}<span style="margin-left:auto;font-size:11px;color:#94a3b8;">${fmtDate(t.created_at)}</span></div><div class="t-title">${esc(t.type)}</div><div class="t-meta"><strong>${esc(t.agency_name)}</strong> · ${esc(t.npax)} pax · ${esc(t.flight)}</div><div class="t-desc">${esc(t.description)}${t.location?' — '+esc(t.location):''}</div>${slaBar(t)}${t.resolved_at?`<div style="font-size:12px;color:#16a34a;margin:6px 0;">✅ Resolvido: ${fmtDate(t.resolved_at)}</div>`:''}<div class="t-actions">${ops&&t.status==='open'?`<button class="btn btn-blue" onclick="assignTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Assumir</button><button class="btn btn-green" onclick="resolveTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Resolver</button><button class="btn" onclick="opsPg('c',document.getElementById('so-c'))" style="font-size:12px;padding:6px 11px;">Chat</button>`:''} ${!ops&&t.status==='open'?`<span class="badge bdg-a">Aguardando equipe SOS Tur</span>`:''} ${t.status==='resolved'?`<span class="badge bdg-g">Encerrado</span>`:''}</div></div>`;}
+function ticketHTML(t,ops){const pc=t.priority==='P1'?'p1':t.priority==='P2'?'p2':'p3';const sc=t.status==='resolved'?'done':pc;const bc=t.priority==='P1'?'bdg-r':t.priority==='P2'?'bdg-a':'bdg-g';return `<div class="ticket ${sc}"><div class="t-hd"><span class="t-num">#${esc(t.num)}</span><span class="badge ${bc}">${esc(t.priority)}</span><span class="badge ${t.status==='open'?'bdg-r':'bdg-g'}">${t.status==='open'?'Em aberto':'Resolvido'}</span>${t.assigned_to?`<span class="badge bdg-b">Agente: ${esc(t.assigned_to)}</span>`:''}<span style="margin-left:auto;font-size:11px;color:#94a3b8;">${fmtDate(t.created_at)}</span></div><div class="t-title">${esc(t.type)}</div><div class="t-meta"><strong>${esc(t.agency_name)}</strong> · ${esc(t.npax)} pax · ${esc(t.flight)}</div><div class="t-desc">${esc(t.description)}${t.location?' — '+esc(t.location):''}</div>${slaBar(t)}${t.resolved_at?`<div style="font-size:12px;color:#16a34a;margin:6px 0;">✅ Resolvido: ${fmtDate(t.resolved_at)}</div>`:''}${csatHTML(t,ops)}${ops?notesHTML(t):''}<div class="t-actions" style="margin-top:8px;">${ops&&t.status==='open'?`<button class="btn btn-blue" onclick="assignTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Assumir</button><button class="btn btn-green" onclick="resolveTicket('${t.id}',this)" style="font-size:12px;padding:6px 11px;">Resolver</button><button class="btn" onclick="opsPg('c',document.getElementById('so-c'));setTimeout(()=>selectChatTicket('${t.id}'),300)" style="font-size:12px;padding:6px 11px;">💬 Chat</button>`:''} ${!ops&&t.status==='open'?`<span class="badge bdg-a">Aguardando equipe SOS Tur</span><button class="btn" onclick="agPg('c',document.getElementById('sa-c'));setTimeout(()=>selectAgChat('${t.id}','${esc(t.num)}'),300)" style="font-size:12px;padding:5px 10px;margin-left:4px;">💬 Chat</button>`:''} ${t.status==='resolved'?`<span class="badge bdg-g">Encerrado</span>`:''}</div></div>`;}
 
 async function loadDefaultTeam(){if(!db)return;try{const ex=await dbQ('sos_team');if(ex.length>0)return;const defs=[{name:'Renata Ferreira',wpp:'(11)99001-0001',shift:'Madrugada (00h–08h)',spec:'Geral',status:'available'},{name:'Marcos Oliveira',wpp:'(11)99001-0002',shift:'Manhã (08h–16h)',spec:'Voos e conexões',status:'available'},{name:'Julia Santos',wpp:'(11)99001-0003',shift:'Tarde/Noite (16h–00h)',spec:'Hotéis',status:'available'}];for(const d of defs)await dbI('sos_team',d);}catch(e){console.warn('loadDefaultTeam:',e.message);}}
 async function renderOpsTeamNow(){const team=await dbQ('sos_team');const el=document.getElementById('ops-team-now');if(!el)return;el.innerHTML=team.slice(0,4).map(a=>`<div class="agent-row"><div class="a-av" style="background:${a.status==='available'?'#16a34a':'#d97706'};">${esc(a.name.split(' ').map(w=>w[0]).join('').slice(0,2))}</div><div style="flex:1;"><div style="font-weight:700;font-size:13px;">${esc(a.name)}</div><div style="font-size:12px;color:#64748b;">${esc(a.shift)}</div></div><span class="badge ${a.status==='available'?'bdg-g':'bdg-a'}">${a.status==='available'?'Disponível':'Ocupado'}</span></div>`).join('');}
@@ -1021,6 +1071,149 @@ function subscribeOps(){
       updateOpsStats();
     })
     .subscribe();
+}
+
+// ── CHAT REAL (OPS) ───────────────────────────
+async function loadChatTicketList(){
+  if(!db)return;
+  const sel=document.getElementById('chat-ticket-sel');if(!sel)return;
+  const tks=await dbQ('sos_tickets',{status:'open'});
+  sel.innerHTML='<option value="">Selecione um chamado...</option>'+tks.map(t=>`<option value="${esc(t.id)}">[${esc(t.priority)}] ${esc(t.num)} — ${esc(t.agency_name)}</option>`).join('');
+  if(activeChatTicket){sel.value=activeChatTicket.id;}
+}
+async function selectChatTicket(ticketId){
+  const info=document.getElementById('chat-ticket-info');
+  if(!ticketId){activeChatTicket=null;if(info)info.textContent='Selecione um chamado →';const box=document.getElementById('chat-box');if(box)box.innerHTML='<div class="empty" style="color:#94a3b8;">Selecione um chamado.</div>';return;}
+  const sel=document.getElementById('chat-ticket-sel');
+  const opt=sel?.options[sel.selectedIndex];
+  activeChatTicket={id:ticketId,label:opt?.text||ticketId};
+  if(info){info.textContent=activeChatTicket.label;info.style.color='#0f172a';}
+  await loadChatMessages(ticketId,'chat-box');
+  subscribeChat(ticketId);
+}
+async function loadChatMessages(ticketId,boxId){
+  const box=document.getElementById(boxId||'chat-box');if(!box)return;
+  box.innerHTML='<div class="empty" style="color:#94a3b8;animation:pulse 1.5s infinite;">Carregando...</div>';
+  if(!db){box.innerHTML='<div class="empty">Sem conexão.</div>';return;}
+  const{data}=await db.from('sos_chat_messages').select('*').eq('ticket_id',ticketId).order('created_at',{ascending:true});
+  const msgs=data||[];
+  if(!msgs.length){box.innerHTML='<div class="empty" style="color:#94a3b8;">Nenhuma mensagem ainda. Inicie a conversa.</div>';return;}
+  box.innerHTML=msgs.map(m=>chatMsgHTML(m,boxId!=='ag-chat-box')).join('');
+  box.scrollTop=box.scrollHeight;
+}
+function chatMsgHTML(m,opsView){
+  const isMe=opsView?(m.from_type==='ops'):(m.from_type==='agency');
+  return `<div class="chat-msg ${isMe?'op':'ag'}"><div class="chat-bubble">${esc(m.message)}</div><div class="chat-time">${esc(m.sender_name||'—')} · ${fmtDate(m.created_at)}</div></div>`;
+}
+async function sendChat(){
+  const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;
+  if(!activeChatTicket){toast('Selecione um chamado primeiro.','w');return;}
+  const btn=document.getElementById('chat-send-btn');if(btn)btn.disabled=true;
+  try{await dbI('sos_chat_messages',{ticket_id:activeChatTicket.id,from_type:'ops',sender_name:user?.name||'Operador',message:msg});inp.value='';}
+  catch(e){toast('Erro ao enviar: '+(e.message||'Tente novamente.'),'e');}
+  finally{if(btn)btn.disabled=false;}
+}
+function subscribeChat(ticketId){
+  if(chChat)db.removeChannel(chChat);if(!db)return;
+  chChat=db.channel('chat-'+ticketId).on('postgres_changes',{event:'INSERT',schema:'public',table:'sos_chat_messages',filter:'ticket_id=eq.'+ticketId},(p)=>{
+    const box=document.getElementById('chat-box');if(!box)return;
+    const empty=box.querySelector('.empty');if(empty)empty.remove();
+    box.insertAdjacentHTML('beforeend',chatMsgHTML(p.new,true));box.scrollTop=box.scrollHeight;
+  }).subscribe();
+}
+function qr(msg){document.getElementById('chat-inp').value=msg;sendChat();}
+
+// ── CHAT REAL (AGÊNCIA) ───────────────────────
+async function loadAgencyChatTickets(){
+  const el=document.getElementById('ag-chat-tickets');if(!el)return;
+  if(!agency){el.innerHTML='<div class="empty">Agência não encontrada.</div>';return;}
+  const tks=(await dbQ('sos_tickets',{agency_id:agency.id})).filter(t=>t.status==='open');
+  if(!tks.length){el.innerHTML='<div class="empty">Nenhum chamado aberto para chat.</div>';return;}
+  el.innerHTML=tks.map(t=>`<div class="agent-row" style="cursor:pointer;" onclick="selectAgChat('${esc(t.id)}','${esc(t.num)}')"><div style="flex:1;"><div style="font-weight:700;font-size:13px;">#${esc(t.num)}</div><div style="font-size:12px;color:#64748b;">${esc(t.type)}</div></div><span class="badge bdg-${t.priority==='P1'?'r':t.priority==='P2'?'a':'g'}">${esc(t.priority)}</span></div>`).join('');
+}
+async function selectAgChat(ticketId,ticketNum){
+  activeAgChatTicket={id:ticketId,num:ticketNum};
+  const hdr=document.getElementById('ag-chat-header');if(hdr){hdr.textContent='Chamado #'+ticketNum;hdr.style.color='#0f172a';}
+  await loadChatMessages(ticketId,'ag-chat-box');
+  subscribeAgChat(ticketId);
+}
+async function sendAgChat(){
+  const inp=document.getElementById('ag-chat-inp');const msg=inp.value.trim();if(!msg)return;
+  if(!activeAgChatTicket){toast('Selecione um chamado primeiro.','w');return;}
+  try{await dbI('sos_chat_messages',{ticket_id:activeAgChatTicket.id,from_type:'agency',sender_name:user?.name||agency?.name||'Agência',message:msg});inp.value='';}
+  catch(e){toast('Erro ao enviar: '+(e.message||'Tente novamente.'),'e');}
+}
+function subscribeAgChat(ticketId){
+  if(chAgChat)db.removeChannel(chAgChat);if(!db)return;
+  chAgChat=db.channel('agchat-'+ticketId).on('postgres_changes',{event:'INSERT',schema:'public',table:'sos_chat_messages',filter:'ticket_id=eq.'+ticketId},(p)=>{
+    const box=document.getElementById('ag-chat-box');if(!box)return;
+    const empty=box.querySelector('.empty');if(empty)empty.remove();
+    box.insertAdjacentHTML('beforeend',chatMsgHTML(p.new,false));box.scrollTop=box.scrollHeight;
+  }).subscribe();
+}
+
+// ── CSAT / NOTAS INTERNAS ─────────────────────
+function csatHTML(t,ops){
+  if(t.status!=='resolved')return '';
+  if(ops)return t.csat_score?`<div style="font-size:12px;color:#d97706;margin-top:4px;">Avaliação: ${'⭐'.repeat(t.csat_score)} (${t.csat_score}/5)</div>`:'<div style="font-size:12px;color:#94a3b8;margin-top:4px;">Sem avaliação do cliente</div>';
+  if(t.csat_score)return `<div class="csat-rated" style="margin-top:6px;">Sua avaliação: ${'⭐'.repeat(t.csat_score)} — Obrigado pelo feedback!</div>`;
+  return `<div style="display:flex;align-items:center;gap:4px;margin-top:8px;flex-wrap:wrap;"><span style="font-size:12px;color:#64748b;">Avalie o atendimento:</span><span class="csat-stars">${[1,2,3,4,5].map(n=>`<button title="${n} estrela${n>1?'s':''}" onclick="rateCsat('${t.id}',${n})">☆</button>`).join('')}</span></div>`;
+}
+function notesHTML(t){
+  return `<details style="margin-top:8px;"><summary style="font-size:12px;color:#64748b;cursor:pointer;user-select:none;">📝 Notas internas (visível só para ops)</summary><textarea id="note-${esc(t.id)}" rows="2" style="width:100%;margin-top:6px;border:1px solid #e2e8f0;border-radius:7px;padding:8px;font-size:12px;font-family:'Inter',sans-serif;resize:vertical;outline:none;background:#f8fafc;" placeholder="Adicione notas internas..." onblur="saveNote('${esc(t.id)}',this.value)">${esc(t.internal_notes||'')}</textarea></details>`;
+}
+async function rateCsat(ticketId,score){
+  try{await dbU('sos_tickets',ticketId,{csat_score:score});toast('Avaliação registrada! '+'⭐'.repeat(score),'s');loadAgencyPortal();}
+  catch(e){toast('Erro ao registrar avaliação.','e');}
+}
+async function saveNote(ticketId,note){
+  try{await dbU('sos_tickets',ticketId,{internal_notes:note});toast('Nota salva.','s',1500);}catch(e){}
+}
+
+// ── CSV EXPORT ────────────────────────────────
+async function exportCSV(){
+  const btn=document.getElementById('export-btn');if(btn)btnLoad(btn,true);
+  try{
+    const tks=await dbQ('sos_tickets');
+    const header=['Número','Agência','Tipo','Prioridade','Passageiro','Qtd.Pax','Voo','Localização','Status','SLA(min)','Atribuído','Criado','Resolvido','CSAT'].join(',');
+    const rows=tks.map(t=>[t.num,t.agency_name,t.type,t.priority,t.pax,t.npax,t.flight,t.location,t.status,t.sla_minutes,t.assigned_to,fmtDate(t.created_at),fmtDate(t.resolved_at),t.csat_score||''].map(v=>'"'+(String(v||'')).replace(/"/g,'""')+'"').join(','));
+    const csv='﻿'+header+'\n'+rows.join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download='sostur-chamados-'+new Date().toISOString().slice(0,10)+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    toast('CSV exportado com '+tks.length+' chamados!','s');
+  }catch(e){toast('Erro ao exportar: '+(e.message||'Tente novamente.'),'e');}
+  finally{if(btn){btnLoad(btn,false);btn.textContent='⬇ Exportar CSV';}}
+}
+
+// ── ATALHOS DE TECLADO ────────────────────────
+function setupKeyboardShortcuts(){
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT')return;
+    if(!user)return;
+    if(e.key==='?'){showShortcutsModal();return;}
+    if(user.role==='agency'){
+      if(e.key==='1')agPg('d',document.getElementById('sa-d'));
+      else if(e.key==='n')agPg('n',document.getElementById('sa-n'));
+      else if(e.key==='2')agPg('t',document.getElementById('sa-t'));
+      else if(e.key==='3')agPg('c',document.getElementById('sa-c'));
+    }else if(user.role==='ops'){
+      if(e.key==='1')opsPg('d',document.getElementById('so-d'));
+      else if(e.key==='2')opsPg('o',document.getElementById('so-o'));
+      else if(e.key==='3')opsPg('c',document.getElementById('so-c'));
+      else if(e.key==='4')opsPg('a',document.getElementById('so-a'));
+    }
+  });
+}
+function showShortcutsModal(){
+  const existing=document.getElementById('sh-modal');if(existing){existing.remove();return;}
+  const rows=user?.role==='ops'?[['1','Dashboard'],['2','Chamados abertos'],['3','Chat'],['4','Agências'],['?','Este painel']]:
+    [['1','Dashboard'],['n','Novo chamado'],['2','Meus chamados'],['3','Chat'],['?','Este painel']];
+  const div=document.createElement('div');div.id='sh-modal';div.className='sh-modal';
+  div.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><span style="font-size:15px;font-weight:700;">⌨ Atalhos de teclado</span><button onclick="document.getElementById('sh-modal').remove()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#94a3b8;">✕</button></div>${rows.map(([k,v])=>`<div class="sh-row"><span class="sh-key">${k}</span><span style="color:#64748b;">${v}</span></div>`).join('')}`;
+  document.body.appendChild(div);
+  setTimeout(()=>document.addEventListener('click',()=>document.getElementById('sh-modal')?.remove(),{once:true}),50);
 }
 
 window.addEventListener('load',init);
